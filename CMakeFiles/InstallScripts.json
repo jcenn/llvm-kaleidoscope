@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/jcen/CLionProjects/llvm-kaleidoscope/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
