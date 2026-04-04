@@ -10,9 +10,9 @@ int main() {
     Lexer lexer = Lexer();
     // auto tokens = lexer.parse(input);
     auto tokens = lexer.parse_file("programs/main.asn");
-    for (Token token : tokens) {
-        std::cout << token_to_string(token.type) << std::endl;
-    }
+    // for (Token token : tokens) {
+    //     std::cout << token_to_string(token.type) << std::endl;
+    // }
 
     Parser parser = Parser();
     ModuleAST* AST = parser.parse_tokens(tokens);

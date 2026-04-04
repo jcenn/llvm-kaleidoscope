@@ -9,4 +9,6 @@ add_executable(llvm_kaleidoscope main.cpp
         Token.h
         Parser.cpp
         Parser.h
+        ast.cpp
+        ast.h
 )

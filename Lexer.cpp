@@ -13,7 +13,7 @@
 
 bool match_pattern(const std::string& source, const std::string&& pattern) {
     if (source.substr(0, pattern.length()) == pattern) {
-        printf("Found pattern %s \n", pattern.c_str());
+        // printf("Found pattern %s \n", pattern.c_str());
         return true;
     }
     return false;
