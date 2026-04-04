@@ -1,0 +1,7 @@
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/intrinsics_gen.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/omp_gen.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/acc_gen.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/llvm_kaleidoscope.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/edit_cache.dir
+/home/jcen/CLionProjects/llvm-kaleidoscope/CMakeFiles/rebuild_cache.dir

@@ -13,7 +13,7 @@
 
 class Parser {
 public:
-    ModuleAST* parse_tokens(const std::vector<Token>& tokens);
+    static std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
 };
 
 
