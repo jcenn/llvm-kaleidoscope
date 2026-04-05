@@ -30,50 +30,6 @@ enum class TokenType {
     LITERAL             // static values (numbers / strings / booleans / etc.)
 };
 
-inline std::string token_to_string(TokenType type) {
-    switch (type) {
-        // --- KEYWORDS ---
-        case TokenType::FN:
-            return "FN";
-        case TokenType::LET:
-            return "LET";
-        case TokenType::RETURN:
-            return "RETURN";
-
-        case TokenType::COLON:
-            return "COLON";
-        case TokenType::SEMICOLON:
-            return "SEMICOLON";
-
-        // --- BINARY OPERATORS ---
-        case TokenType::EQUALS:
-            return "EQUALS";
-        case TokenType::PLUS:
-            return "PLUS";
-        case TokenType::MINUS:
-            return "MINUS";
-
-        case TokenType::EXCLAMATION:
-            return "EXCLAMATION";
-
-        // --- BRACKETS ---
-        case TokenType::BRACKET_L:
-            return "BRACKET_L";
-        case TokenType::BRACKET_R:
-            return "BRACKET_R";
-        case TokenType::BRACE_L:
-            return "BRACE_L";
-        case TokenType::BRACE_R:
-            return "BRACE_R";
-
-        case TokenType::IDENTIFIER:
-            return "IDENTIFIER";
-        case TokenType::LITERAL:
-            return "LITERAL";
-        default:
-            throw std::runtime_error("Unknown TokenType");
-    }
-}
 
 struct Token {
     TokenType type;
@@ -87,4 +43,48 @@ struct Token {
 
 };
 
+inline std::string token_to_string(const Token& token) {
+    switch (token.type) {
+        // --- KEYWORDS ---
+        case TokenType::FN:
+            return "FN";
+        case TokenType::LET:
+            return "LET";
+        case TokenType::RETURN:
+            return "RETURN";
+
+        case TokenType::COLON:
+            return "COLON";
+        case TokenType::SEMICOLON:
+            return "SEMICOLON";
+
+            // --- BINARY OPERATORS ---
+        case TokenType::EQUALS:
+            return "EQUALS";
+        case TokenType::PLUS:
+            return "PLUS";
+        case TokenType::MINUS:
+            return "MINUS";
+
+        case TokenType::EXCLAMATION:
+            return "EXCLAMATION";
+
+            // --- BRACKETS ---
+        case TokenType::BRACKET_L:
+            return "BRACKET_L";
+        case TokenType::BRACKET_R:
+            return "BRACKET_R";
+        case TokenType::BRACE_L:
+            return "BRACE_L";
+        case TokenType::BRACE_R:
+            return "BRACE_R";
+
+        case TokenType::IDENTIFIER:
+            return "IDENTIFIER -> " + token.value.value();
+        case TokenType::LITERAL:
+            return "LITERAL -> " + token.value.value();
+        default:
+            throw std::runtime_error("Unknown TokenType");
+    }
+}
 #endif //LLVM_KALEIDOSCOPE_TOKEN_H

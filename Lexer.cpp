@@ -36,6 +36,8 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             index++;
         }
 
+        if (index >= source_length) break;
+
         // Check all possible token types
 
         // Single character operator

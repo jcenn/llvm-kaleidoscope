@@ -19,6 +19,7 @@
       stablePkgs = with pkgs;[
         ninja
         gdb
+        clang
         # This pulls in the LLVM headers, libraries, and 'llvm-config'
       ];
       unstablePkgs = with unstable;[
