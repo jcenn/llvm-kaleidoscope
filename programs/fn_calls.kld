@@ -1,7 +1,16 @@
+extern rand();
+extern time(x);
+
 fn add(x, y){
     return x + y;
 }
 
+fn sub(x, y){
+    return x - y;
+}
+fn rn(){
+    return rand();
+}
 fn main(){
-    return add(1, 2);
+    return time(0);
 }

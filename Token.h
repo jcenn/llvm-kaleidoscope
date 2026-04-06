@@ -10,7 +10,7 @@
 
 enum class TokenType {
     // --- KEYWORDS ---
-    FN, LET, RETURN,
+    FN, LET, RETURN, EXTERN,
 
     // SYMBOLS
     COLON, SEMICOLON, COMMA,

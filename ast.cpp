@@ -16,7 +16,7 @@ std::unique_ptr<llvm::LLVMContext> Context;
 // The Builder object is a helper object that makes it easy to generate LLVM instructions. Instances of the IRBuilder class template keep track of the current place to insert instructions and has methods to create new instructions.
 std::unique_ptr<llvm::IRBuilder<>> Builder;
 
-// TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all of the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
+// TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
 std::unique_ptr<llvm::Module> TheModule;
 
 // The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
@@ -63,7 +63,7 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
 
     // variable / literal references
     if (tokens.size() == 1) {
-        // TODO: differetiate between identifiers and literals in a different pass
+        // TODO: differentiate between identifiers and literals in a different pass
         bool is_literal = true;
         for (const char c : tokens.at(0).value.value()) {
             if (std::isalpha(c)) {
@@ -133,10 +133,6 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
         }
         arg_index++;
     }
-
-
-
-
 
     size_t open_brace_i = 0;
     size_t close_brace_i = 0;
@@ -324,15 +320,40 @@ llvm::Value * ReturnStatementAST::codegen() {
     return ret;
 }
 
+std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token>& tokens) {
+    if (tokens.front().type != TokenType::EXTERN) {
+        throw std::logic_error("Incorrect tokens for a prototype");
+    }
+
+    // find identifier and arguments
+    std::string identifier = tokens.at(1).value.value();
+    // opening bracket
+    auto i = 2;
+    std::vector<std::string> arg_identifiers{};
+    while (i < tokens.size()) {
+        // we don't expect () inside extern declarations
+        if (tokens.at(i).type == TokenType::BRACKET_R) {
+            break;
+        }
+
+        if (tokens.at(i).type == TokenType::IDENTIFIER || tokens.at(i).type == TokenType::LITERAL) {
+            arg_identifiers.push_back(tokens.at(i).value.value());
+        }
+        i++;
+    }
+    tokens.erase(tokens.begin(), tokens.begin() + i + 2); // +2 => closing ')' and semicolon
+    return std::make_unique<PrototypeAST>(identifier, arg_identifiers);
+}
+
 void ModuleAST::resolve() {
     if (this->tokens.empty()) {
         throw std::logic_error("ModuleAST::resolve(): empty tokens list");
     }
 
     // Consume tokens in a loop converting them to AST nodes
+    size_t i{};
     while (!this->tokens.empty()) {
         auto token = this->tokens.front();
-
         // At this point we expect the module to only have the main function, but it could be later extended
         // to include different functions and global variables
         switch (token.type) {
@@ -342,16 +363,28 @@ void ModuleAST::resolve() {
                 this->declarations.push_back(std::move(node));
                 break;
             }
+            case TokenType::EXTERN: {
+                auto proto = parse_prototype(tokens);
+                std::cout << "Found external function " << proto->identifier << std::endl;
+                this->declarations.push_back(std::move(proto));
+                break;
+            }
             default:
                 throw std::logic_error("ModuleAST::resolve(): unknown token type");
         }
+        i++;
     }
 }
 
 void ModuleAST::codegen() {
     for (auto& declaration : this->declarations) {
+        if (auto proto = dynamic_cast<PrototypeAST*>(declaration.get())) {
+            proto->codegen();
+            continue;
+        }
         if (auto fn = dynamic_cast<FunctionAST*>(declaration.get())) {
             fn->codegen();
+            continue;
         }
     }
 }
@@ -365,7 +398,7 @@ void BinaryExpressionAST::resolve() {
     for (size_t i{}; i < tokens.size(); i++) {
         if (is_binary_operator(tokens.at(i))) {
             operator_index = i;
-            // Currently stopping at first operator but we should handle precedence priority
+            // Currently stopping at first operator, but we should handle precedence priority
             break;
         }
     }
@@ -461,9 +494,18 @@ void CallExpressionAST::resolve() {
     }
     size_t arg_start = 2;
     size_t i = arg_start;
-    while (this->tokens.at(i-1).type != TokenType::BRACKET_R) {
+
+    // TODO: consider i < tokens.size() ?
+    while (this->tokens.at(i).type != TokenType::BRACKET_R) {
         // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
         // TODO: could cause problems when passing other function calls ex. foo(1, bar(2, 3)) as it could consider the , inside bar to be a terminator
+
+        // if we hit a '(' in arguments, we skip to the matching ')' to handle calls like foo(1, foo(2, 3))
+        if (tokens.at(i).type == TokenType::BRACKET_L) {
+            i = find_matching_paren_index(tokens, i) + 1;
+            continue;
+        }
+
         // We hit the end of the first argument
         if (tokens.at(i).type == TokenType::COMMA) {
             auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
