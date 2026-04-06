@@ -123,6 +123,20 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
     }
 
     std::unique_ptr<FunctionAST> functionAST = nullptr;
+    std::vector<std::string> arg_identifiers{};
+
+    auto arg_index = 2;
+    while (tokens.at(arg_index).type != TokenType::BRACKET_R) {
+        // TODO: remove literal after adding proper identifier parsing
+        if (tokens.at(arg_index).type == TokenType::IDENTIFIER || tokens.at(arg_index).type == TokenType::LITERAL) {
+            arg_identifiers.push_back(tokens.at(arg_index).value.value());
+        }
+        arg_index++;
+    }
+
+
+
+
 
     size_t open_brace_i = 0;
     size_t close_brace_i = 0;
@@ -162,7 +176,7 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
         functionAST = std::make_unique<FunctionAST>(std::vector<Token>{}, identifier_token.value.value(), std::vector<std::string>{});
     }else {
         auto body_tokens = std::vector<Token>(tokens.begin() + open_brace_i + 1, tokens.begin() + close_brace_i - 1);
-        functionAST = std::make_unique<FunctionAST>(body_tokens, identifier_token.value.value(), std::vector<std::string>{});
+        functionAST = std::make_unique<FunctionAST>(body_tokens, identifier_token.value.value(), arg_identifiers);
         functionAST->resolve();
         tokens.erase(tokens.begin(), tokens.begin() + close_brace_i);
     }
@@ -445,11 +459,11 @@ void CallExpressionAST::resolve() {
     if (this->tokens.size() == 3) {
         return;
     }
-    size_t arg_start = 3;
+    size_t arg_start = 2;
     size_t i = arg_start;
-    while (this->tokens.at(i).type != TokenType::BRACKET_R) {
+    while (this->tokens.at(i-1).type != TokenType::BRACKET_R) {
         // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
-
+        // TODO: could cause problems when passing other function calls ex. foo(1, bar(2, 3)) as it could consider the , inside bar to be a terminator
         // We hit the end of the first argument
         if (tokens.at(i).type == TokenType::COMMA) {
             auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
@@ -462,8 +476,9 @@ void CallExpressionAST::resolve() {
     }
     // we hit the closing paren
     // if function has arguments we consume the last one
-    if (i != arg_start) {
-        auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
+    // i == 3 would indicate a function without arguments -> Token[foo, (, )]
+    if (i != 2) {
+        auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.end() - 1);
         auto expression = parse_expression(expr_tokens);
         this->arg_expressions.push_back(std::move(expression));
     }

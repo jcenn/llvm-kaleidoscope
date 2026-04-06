@@ -1,16 +1,15 @@
 ; ModuleID = 'main module'
 source_filename = "main module"
 
-define i32 @foo() {
+define i32 @add(i32 %x, i32 %y) {
 entry:
-  ret i32 9
+  %0 = add i32 %y, %x
+  %1 = add i32 %x, %0
+  ret i32 %1
 }
 
 define i32 @main() {
 entry:
-  %call_tmp = call i32 @foo()
-  %call_tmp1 = call i32 @foo()
-  %0 = sub i32 %call_tmp1, 2
-  %1 = add i32 %call_tmp, %0
-  ret i32 %1
+  %call_tmp = call i32 @add(i32 1, i32 2)
+  ret i32 %call_tmp
 }
