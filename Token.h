@@ -12,7 +12,8 @@ enum class TokenType {
     // --- KEYWORDS ---
     FN, LET, RETURN,
 
-    COLON, SEMICOLON,
+    // SYMBOLS
+    COLON, SEMICOLON, COMMA,
 
     // --- BINARY OPERATORS ---
     EQUALS,

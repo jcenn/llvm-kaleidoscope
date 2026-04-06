@@ -46,6 +46,9 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             case ';':
                 tokens.emplace_back(TokenType::SEMICOLON);
                 continue;
+            case ',':
+                tokens.emplace_back(TokenType::COMMA);
+                continue;
             case '+':
                 tokens.emplace_back(TokenType::PLUS);
                 continue;

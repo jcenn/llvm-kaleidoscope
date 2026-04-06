@@ -1,6 +1,7 @@
 ./CMakeFiles/
 ./cmake-build-debug/
 ./build/
-./.direnv
+.direnv
+.direnv/*
 .idea
 .envrc

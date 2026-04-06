@@ -145,6 +145,17 @@ public:
     llvm::Value* codegen() override;
 };
 
+// Leaf node for literals inside expressions
+class CallExpressionAST : public ExpressionAST {
+public:
+    std::string calee_identifier;
+    std::vector<std::unique_ptr<ExpressionAST>> arg_expressions{};
+    explicit CallExpressionAST(const std::vector<Token> &tokens) : ExpressionAST(tokens) { }
+    ~CallExpressionAST() override = default;
+
+    void resolve() override;
+    llvm::Value* codegen() override;
+};
 
 // ex. let x = 2 + 3;
 class LetStatementAST : public StatementAST {

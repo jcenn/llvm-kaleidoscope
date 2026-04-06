@@ -34,7 +34,7 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
 
     // variable / literal references
     if (tokens.size() == 1) {
-        // TODO: differetiate between identifiers and literals
+        // TODO: differetiate between identifiers and literals in a different pass
         bool is_literal = true;
         for (const char c : tokens.at(0).value.value()) {
             if (std::isalpha(c)) {
@@ -51,6 +51,16 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
         expr->resolve();
         return expr;
     }
+
+    // Function calls
+    // TODO: remove literal after fixing differentiating between them
+    if ((tokens.front().type == TokenType::IDENTIFIER || tokens.front().type == TokenType::LITERAL) && tokens.at(1).type == TokenType::BRACKET_L) {
+        auto expr = std::make_unique<CallExpressionAST>(tokens);
+        expr->resolve();
+        return expr;
+    }
+
+    // TODO: modify to handle more complex expressions
     // only parse first 3 tokens for expressions like 1 + 3
     if (tokens.size() == 3) {
         auto expr = std::make_unique<BinaryExpressionAST>(tokens);
@@ -58,7 +68,8 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
         return expr;
     }
 
-    throw std::runtime_error("Tried to parse an empty expression");
+
+    throw std::runtime_error("Tried to parse an invalid expression");
 }
 
 std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
@@ -358,7 +369,6 @@ void LiteralExpressionAST::resolve() {
 }
 
 llvm::Value * LiteralExpressionAST::codegen() {
-    // TODO: get the real value
     int num = 0;
     try {
         num = std::stoi(this->value_str);
@@ -370,4 +380,65 @@ llvm::Value * LiteralExpressionAST::codegen() {
         throw std::logic_error("Literal " + this->value_str + " is too large to fit in i32");
     }
     return llvm::ConstantInt::get(*Context, llvm::APInt(32, num, true));
+}
+
+void CallExpressionAST::resolve() {
+    // expects tokens like [ foo(bar, baz) ]
+    if (this->tokens.size() < 3) {
+        throw std::logic_error("Created call expression with less than 3 tokens");
+    }
+    if (this->tokens.front().type != TokenType::IDENTIFIER) {
+        throw std::logic_error("Created call expression with no identifier");
+    }
+
+    this->calee_identifier = this->tokens.front().value.value();
+    // Function with no arguments ex. foo();
+    if (this->tokens.size() == 3) {
+        return;
+    }
+    size_t arg_start = 3;
+    size_t i = arg_start;
+    while (this->tokens.at(i).type != TokenType::BRACKET_R) {
+        // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
+
+        // We hit the end of the first argument
+        if (tokens.at(i).type == TokenType::COMMA) {
+            auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
+            auto expression = parse_expression(expr_tokens);
+            this->arg_expressions.push_back(std::move(expression));
+            arg_start = i + 1;
+        }
+
+        i++;
+    }
+    // we hit the closing paren
+    // if function has arguments we consume the last one
+    if (i != arg_start) {
+        auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
+        auto expression = parse_expression(expr_tokens);
+        this->arg_expressions.push_back(std::move(expression));
+    }
+}
+
+llvm::Value * CallExpressionAST::codegen() {
+    llvm::Function* function = TheModule->getFunction(this->calee_identifier);
+    if (!function) {
+        throw std::runtime_error("Tried to call a non-existent function " + this->calee_identifier);
+    }
+
+    if (function->arg_size() != this->arg_expressions.size()) {
+        throw std::runtime_error("Mismatch in argument count for function " + this->calee_identifier + "\n expected " + std::to_string(function->arg_size()) + " arguments, " + "got " + std::to_string(this->arg_expressions.size()) + ".");
+    }
+
+    std::vector<llvm::Value*> arg_values{};
+    for (auto& arg : this->arg_expressions) {
+        auto val = arg->codegen();
+        if (!val) {
+            throw std::runtime_error("Codegen error couldn't parse argument value when calling " + this->calee_identifier);
+        }
+        arg_values.push_back(val);
+    }
+
+    return Builder->CreateCall(function, arg_values, "call_tmp");
+
 }

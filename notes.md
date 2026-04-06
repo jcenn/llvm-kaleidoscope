@@ -12,7 +12,8 @@ Similar to official kaleidoscope specs
         return x;
     }
 ```
-### AST
-Function(main){
-    
-}
+
+## TODO
+- [ ] Fully functional arithmetic expression parsing
+- [ ] Function calls
+- [ ] Extern keyword
