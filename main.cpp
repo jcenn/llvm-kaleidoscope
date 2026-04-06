@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     // }
     std::unique_ptr<ModuleAST> AST = Parser::parse_tokens(tokens);
 
-    // print_ast(AST.get());
+    print_ast(AST.get());
 
     InitializeCodeGen();
     AST->codegen();

@@ -28,6 +28,35 @@ void InitializeCodeGen() {
     TheModule = std::make_unique<llvm::Module>("main module", *Context);
 }
 
+bool is_binary_operator(const Token& tok) {
+    switch (tok.type) {
+        case TokenType::PLUS: [[fallthrough]];
+        case TokenType::MINUS:
+            return true;
+        default: return false;
+    }
+    return false;
+}
+
+size_t find_matching_paren_index(std::vector<Token> &tokens, size_t open_paren_i) {
+    auto stack = std::stack<TokenType>();
+    stack.push(TokenType::BRACKET_L);
+    size_t i = open_paren_i + 1;
+    while (i < tokens.size()) {
+        if (stack.top() == TokenType::BRACKET_L && tokens.at(i).type == TokenType::BRACKET_R) {
+            stack.pop();
+        }else if (tokens.at(i).type == TokenType::BRACKET_L) {
+            stack.push(TokenType::BRACKET_L);
+        }
+        if (stack.empty()) {
+            return i;
+        }
+        i++;
+    }
+    throw std::runtime_error("Tried to parse an expression with mismatched parentheses");
+
+}
+
 std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     // if tokens.length() == 1 -> identifier or literal
     if (tokens.empty()) throw std::runtime_error("Tried to parse an empty expression");
@@ -54,20 +83,30 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
 
     // Function calls
     // TODO: remove literal after fixing differentiating between them
-    if ((tokens.front().type == TokenType::IDENTIFIER || tokens.front().type == TokenType::LITERAL) && tokens.at(1).type == TokenType::BRACKET_L) {
-        auto expr = std::make_unique<CallExpressionAST>(tokens);
-        expr->resolve();
-        return expr;
+    if ((tokens.front().type == TokenType::IDENTIFIER || tokens.front().type == TokenType::LITERAL) && tokens.at(1).type == TokenType::BRACKET_L && tokens.back().type == TokenType::BRACKET_R) {
+        // TODO: check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
+        size_t end_paren_i = find_matching_paren_index(tokens, 1);
+        if (end_paren_i == tokens.size()-1) {
+            auto expr = std::make_unique<CallExpressionAST>(tokens);
+            expr->resolve();
+            return expr;
+        }
     }
 
     // TODO: modify to handle more complex expressions
     // only parse first 3 tokens for expressions like 1 + 3
-    if (tokens.size() == 3) {
+    bool binary_exp = false;
+    for (size_t i{}; i < tokens.size(); i++) {
+        // TODO: check other binary expression tokens
+        if (is_binary_operator(tokens.at(i))) {
+            binary_exp = true;
+        }
+    }
+    if (binary_exp) {
         auto expr = std::make_unique<BinaryExpressionAST>(tokens);
         expr->resolve();
         return expr;
     }
-
 
     throw std::runtime_error("Tried to parse an invalid expression");
 }
@@ -306,11 +345,21 @@ void ModuleAST::codegen() {
 
 void BinaryExpressionAST::resolve() {
     // TODO: handle expressions with more than 3 tokens
-    auto lhs_tokens = std::vector<Token>(tokens.begin(), tokens.begin() + 1);
+
+    // Find the operator for current expression
+    size_t operator_index = 0;
+    for (size_t i{}; i < tokens.size(); i++) {
+        if (is_binary_operator(tokens.at(i))) {
+            operator_index = i;
+            // Currently stopping at first operator but we should handle precedence priority
+            break;
+        }
+    }
+    auto lhs_tokens = std::vector<Token>(tokens.begin(), tokens.begin() + operator_index);
     this->lhs = parse_expression(lhs_tokens);
 
     // this->op
-    switch (tokens.at(1).type) {
+    switch (tokens.at(operator_index).type) {
         case TokenType::PLUS: {
             this->operator_ = BinaryOperator::Add;
             std::cout << "Parsed a plus operator" << std::endl;
@@ -324,7 +373,7 @@ void BinaryExpressionAST::resolve() {
             throw std::logic_error("BinaryExpressionAST::resolve(): unknown token type");
     }
 
-    auto rhs_tokens = std::vector<Token>(tokens.end() - 1, tokens.end());
+    auto rhs_tokens = std::vector<Token>(tokens.begin() + operator_index + 1, tokens.end());
     this->rhs = parse_expression(rhs_tokens);
 }
 

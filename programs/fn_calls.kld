@@ -3,5 +3,5 @@ fn foo(){
 }
 
 fn main(){
-    return foo();
+    return foo() + foo() - 2;
 }
