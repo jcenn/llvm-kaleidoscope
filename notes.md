@@ -5,11 +5,15 @@ Similar to official kaleidoscope specs
 - allows for function declarations
 - extern keyword for std::lib functions
 
-### Example ource program
+### Example program
 ```
+    fn add(x, y) -> i32 {
+        return x + y;
+    }
+    
+    // should output 3 to the standard output
     fn main(){
-        let x = 5 + 2;
-        return x;
+        return add(1, 2);
     }
 ```
 
@@ -17,5 +21,6 @@ Similar to official kaleidoscope specs
 - [ ] Fully functional arithmetic expression parsing (order of precedence)
 - [x] Function calls
 - [x] Extern keyword
-- [ ] void functions and call statements
-- [ ] void returns (`return;`)
+- [x] void functions and call statements
+- [x] void returns (`return;`)
+- [x] code comments (`// this is a comment`)
