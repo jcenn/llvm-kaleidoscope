@@ -41,6 +41,12 @@ std::vector<Token> Lexer::parse(const std::string& input) {
 
         // Check all possible token types
 
+        if (source[index] == '-' && source[index + 1] == '>') {
+            tokens.emplace_back(TokenType::ARROW);
+            index += 2;
+            continue;
+        }
+
         // Single character operator
         index++;
         switch (source[this->index-1]) {
@@ -98,7 +104,7 @@ std::vector<Token> Lexer::parse(const std::string& input) {
         // let x = 5 -> space
         // let x=5 -> '='
         // fn main() -> '('
-        constexpr char terminator_characters[] = {' ', ';', ',', '=', '(', ')', '+', '-', '*', '/', '%', 0};
+        constexpr char terminator_characters[] = {' ', ';', ',', '=', '(', ')', '{', '}', '+', '-', '*', '/', '%', 0};
         std::string_view terminators = terminator_characters;
 
         char c = source[start_index + count];
@@ -124,7 +130,12 @@ std::vector<Token> Lexer::parse(const std::string& input) {
         if (is_literal) {
             tokens.emplace_back(TokenType::LITERAL, value);
         }else {
-            tokens.emplace_back(TokenType::IDENTIFIER, value);
+            // TODO: might need more checks or a switch statement to go through keywords
+            if (value == "return") {
+                tokens.emplace_back(TokenType::RETURN);
+            }else {
+                tokens.emplace_back(TokenType::IDENTIFIER, value);
+            }
         }
         index += value.length();
         continue;

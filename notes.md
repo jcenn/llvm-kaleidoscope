@@ -4,8 +4,8 @@ Similar to official kaleidoscope specs
 - if / else statements
 - allows for function declarations
 - extern keyword for std::lib functions
-## Example compilation steps
-### Source program
+
+### Example ource program
 ```
     fn main(){
         let x = 5 + 2;
@@ -14,6 +14,8 @@ Similar to official kaleidoscope specs
 ```
 
 ## TODO
-- [ ] Fully functional arithmetic expression parsing
-- [ ] Function calls
-- [ ] Extern keyword
+- [ ] Fully functional arithmetic expression parsing (order of precedence)
+- [x] Function calls
+- [x] Extern keyword
+- [ ] void functions and call statements
+- [ ] void returns (`return;`)

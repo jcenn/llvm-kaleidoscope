@@ -12,6 +12,7 @@
 #include "llvm/IR/IRBuilder.h"
 
 #include "Token.h"
+#include "Types.h"
 
 
 extern std::unique_ptr<llvm::LLVMContext> Context;
@@ -65,11 +66,14 @@ public:
 // For function declarations (name + args) used either for module functions or imported ones
 class PrototypeAST : public AST_Node {
 public:
+    // Assume function returns void unless specified otherwise
+    TypeIdentifier ret_type = TypeIdentifier::VOID;
     std::string identifier;
     std::vector<std::string> arg_identifiers;
-    PrototypeAST(const std::string& identifier, std::vector<std::string> args) : AST_Node({}) {
+    PrototypeAST(const std::string& identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node({}) {
         this->identifier = identifier;
         this->arg_identifiers = args;
+        this->ret_type = return_type;
     };
     ~PrototypeAST() noexcept override = default;
     void resolve() override {};
@@ -93,8 +97,8 @@ public:
     // std::string params;
     // std::string identifier;
 
-    FunctionAST(const std::vector<Token>& tokens, std::string identifier, std::vector<std::string> args) : AST_Node(tokens) {
-        prototype = std::make_unique<PrototypeAST>(identifier, args);
+    FunctionAST(const std::vector<Token>& tokens, std::string identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node(tokens) {
+        prototype = std::make_unique<PrototypeAST>(identifier, args, return_type);
     };
     ~FunctionAST() noexcept override = default;
     void resolve() override;
@@ -169,9 +173,20 @@ public:
     llvm::Value* codegen() override;
 };
 
+// call statement (functions returning void)
+class CallStatementAST : public StatementAST {
+public:
+    std::unique_ptr<ExpressionAST> call_expression;
+
+    explicit CallStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
+    void resolve() override;
+
+    llvm::Value* codegen() override;
+};
+
 class ReturnStatementAST : public StatementAST {
 public:
-    std::unique_ptr<ExpressionAST> expression;
+    std::unique_ptr<ExpressionAST> expression = nullptr;
 
     explicit ReturnStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
     void resolve() override;

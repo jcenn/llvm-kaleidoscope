@@ -15,6 +15,9 @@ enum class TokenType {
     // SYMBOLS
     COLON, SEMICOLON, COMMA,
 
+    // -> used for return type declarations
+    ARROW,
+
     // --- BINARY OPERATORS ---
     EQUALS,
     PLUS, MINUS,

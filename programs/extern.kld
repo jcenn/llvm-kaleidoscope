@@ -1,0 +1,12 @@
+extern time(x) -> i32;
+extern rand() -> i32;
+extern srand(seed) -> void;
+
+fn init_rand() -> void {
+    srand(time(0));
+    return;
+}
+fn main() -> void {
+    init_rand();
+    return rand();
+}

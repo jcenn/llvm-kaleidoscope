@@ -1,16 +1,11 @@
-extern rand();
-extern time(x);
-
-fn add(x, y){
+fn add(x, y) -> i32 {
     return x + y;
 }
 
-fn sub(x, y){
+fn sub(x, y) -> i32 {
     return x - y;
 }
-fn rn(){
-    return rand();
-}
 fn main(){
-    return time(0);
+    sub(1, 1);
+    return add(1, 3) + sub(5, 1);
 }

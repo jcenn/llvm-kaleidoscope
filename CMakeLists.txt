@@ -23,6 +23,7 @@ add_executable(llvm_kaleidoscope main.cpp
         ast.h
         TestRunner.cpp
         TestRunner.h
+        Types.h
 )
 
 # ... rest of your setup ...

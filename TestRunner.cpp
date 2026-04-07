@@ -95,6 +95,35 @@ LexerTestRunner::LexerTestRunner() {
             return compare_tokens(expectedTokens, actualTokens);
         }
     );
+    tests.emplace_back(
+        "function declarations",
+        [this]() {
+            const std::string source =
+                "fn foo() -> i32{"
+                "   return 0;"
+                "}" ;
+            const std::vector<Token> expectedTokens{
+                // Function declaration
+                Token(TokenType::FN),
+                Token(TokenType::IDENTIFIER, "foo"),
+                Token(TokenType::BRACKET_L),
+                Token(TokenType::BRACKET_R),
+                Token(TokenType::ARROW),
+                Token(TokenType::IDENTIFIER, "i32"),
+                Token(TokenType::BRACE_L),
+                // Function body
+                Token(TokenType::RETURN),
+                Token(TokenType::LITERAL, "0"),
+                Token(TokenType::SEMICOLON),
+
+                Token(TokenType::BRACE_R),
+            };
+            const auto lexer = std::make_unique<Lexer>();
+            const auto actualTokens = lexer->parse(source);
+
+            return compare_tokens(expectedTokens, actualTokens);
+        }
+    );
 }
 
 void LexerTestRunner::runLexerTestCases() {

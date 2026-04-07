@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stack>
 
+#include "Parser.h"
 #include "llvm/IR/Verifier.h"
 
 // From kaleidoscope tutorial:
@@ -77,7 +78,7 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
 
     // Function calls
     // TODO: remove literal after fixing differentiating between them
-    if ((tokens.front().type == TokenType::IDENTIFIER || tokens.front().type == TokenType::LITERAL) && tokens.at(1).type == TokenType::BRACKET_L && tokens.back().type == TokenType::BRACKET_R) {
+    if ((tokens.front().type == TokenType::IDENTIFIER) && tokens.at(1).type == TokenType::BRACKET_L && tokens.back().type == TokenType::BRACKET_R) {
         // TODO: check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
         size_t end_paren_i = find_matching_paren_index(tokens, 1);
         if (end_paren_i == tokens.size()-1) {
@@ -105,24 +106,27 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     throw std::runtime_error("Tried to parse an invalid expression");
 }
 
+// Parsing function *definitions*
 std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
     // find closing brace
     // create AST Node
     // return node and number of consumed tokens (reference parameter?) or just consume them from reference
-    // tokens = [fn, identifier, (, args..., ), '-> type ?', {, ..., }]
+    // tokens = [fn, identifier, (, args..., ), '->', 'type_ident', {, ..., }]
     auto const& identifier_token = tokens.at(1);
+    auto ret_type = TypeIdentifier::VOID;
 
     if (! identifier_token.value) {
         throw std::logic_error("FunctionAST::parse_function(): empty identifier");
     }
 
+
     std::unique_ptr<FunctionAST> functionAST = nullptr;
     std::vector<std::string> arg_identifiers{};
 
     auto arg_index = 2;
+    // Parse function arguments
     while (tokens.at(arg_index).type != TokenType::BRACKET_R) {
-        // TODO: remove literal after adding proper identifier parsing
-        if (tokens.at(arg_index).type == TokenType::IDENTIFIER || tokens.at(arg_index).type == TokenType::LITERAL) {
+        if (tokens.at(arg_index).type == TokenType::IDENTIFIER) {
             arg_identifiers.push_back(tokens.at(arg_index).value.value());
         }
         arg_index++;
@@ -158,15 +162,31 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
         close_brace_i++;
     }
 
+    // find return type identifier
+    //TODO: will not work for more complex types like -> (i32, i32)
+    if (tokens.at(open_brace_i-2).type == TokenType::ARROW && tokens.at(open_brace_i-1).type == TokenType::IDENTIFIER) {
+        auto type_ident = tokens.at(open_brace_i-1).value.value();
+        if (!Parser::type_identifiers.contains(type_ident)) {
+            throw std::runtime_error("Type identifier " + type_ident + " is not recognized by parser");
+        }
+        ret_type = Parser::type_identifiers.at(type_ident);
+    }
+
+    // main has inferred type
+    if (identifier_token.value.value() == "main") {
+        ret_type = TypeIdentifier::I32;
+    }
+
+
     // tokens [open_brace_i : close_brace_i] contains function body + braces
 
     // Empty function
     if (open_brace_i + 1 == close_brace_i) {
         // empty token vector
-        functionAST = std::make_unique<FunctionAST>(std::vector<Token>{}, identifier_token.value.value(), std::vector<std::string>{});
+        functionAST = std::make_unique<FunctionAST>(std::vector<Token>{}, identifier_token.value.value(), std::vector<std::string>{}, ret_type);
     }else {
         auto body_tokens = std::vector<Token>(tokens.begin() + open_brace_i + 1, tokens.begin() + close_brace_i - 1);
-        functionAST = std::make_unique<FunctionAST>(body_tokens, identifier_token.value.value(), arg_identifiers);
+        functionAST = std::make_unique<FunctionAST>(body_tokens, identifier_token.value.value(), arg_identifiers, ret_type);
         functionAST->resolve();
         tokens.erase(tokens.begin(), tokens.begin() + close_brace_i);
     }
@@ -180,7 +200,18 @@ llvm::Function * PrototypeAST::codegen() {
     for (auto& arg : this->arg_identifiers) {
         arg_types.push_back(llvm::Type::getInt32Ty(*Context));
     }
-    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(*Context), arg_types, false);
+    llvm::Type* return_type = nullptr;
+    switch (this->ret_type) {
+        case TypeIdentifier::VOID:
+            return_type = llvm::Type::getVoidTy(*Context);
+            break;
+        case TypeIdentifier::I32:
+            return_type = llvm::Type::getInt32Ty(*Context);
+            break;
+        default:
+            throw std::logic_error("Invalid return type");
+    }
+    llvm::FunctionType* ft = llvm::FunctionType::get(return_type, arg_types, false);
     llvm::Function* fn = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, identifier, TheModule.get());
 
     size_t idx = 0;
@@ -217,6 +248,13 @@ void FunctionAST::resolve() {
             }
             case TokenType::RETURN: {
                 auto statement = std::make_unique<ReturnStatementAST>(statement_tokens);
+                statement->resolve();
+                this->statements.push_back(std::move(statement));
+                break;
+            }
+            // Call statement like InitWindow();
+            case TokenType::IDENTIFIER: {
+                auto statement = std::make_unique<CallStatementAST>(statement_tokens);
                 statement->resolve();
                 this->statements.push_back(std::move(statement));
                 break;
@@ -263,14 +301,11 @@ llvm::Value * FunctionAST::codegen() {
     for (auto& statement : statements) {
         statement->codegen();
     }
-    // function didn't have a return statement
-    if (dynamic_cast<ReturnStatementAST*>(statements.back().get()) == nullptr) {
-        Builder->CreateRetVoid();
-    }
     auto error = llvm::verifyFunction(*fn, &llvm::errs());
     if (error) {
         throw std::runtime_error("Failed to verify function " + prototype->identifier);
     }
+
     return fn;
 
     // fn->eraseFromParent();
@@ -295,12 +330,41 @@ void LetStatementAST::resolve() {
     this->expression = parse_expression(expression_tokens);
 }
 
+void CallStatementAST::resolve() {
+    // tokens = [ identifier, (, ident/literal, ident/literal, ..., ) ]
+    auto const& fn_identifier = this->tokens.front();
+    if (tokens.front().type != TokenType::IDENTIFIER) {
+        throw std::logic_error("Incorrect tokens for a call statement");
+    }
+    if (!fn_identifier.value) {
+        throw std::runtime_error("No function identifier found for the call statement");
+    }
+
+    // resolve call expression
+    auto expression_tokens = std::vector<Token>(tokens.begin(), tokens.end());
+    this->call_expression = parse_expression(expression_tokens);
+}
+
+llvm::Value * CallStatementAST::codegen() {
+    auto expr = this->call_expression->codegen();
+    // if (!expr) {
+    //     throw std::runtime_error("Failed to generate call statement");
+    // }
+    // Call statemetns are not expected to return values so we return nullptr here instead of expression result
+    return nullptr;
+}
+
 llvm::Value * LetStatementAST::codegen() {
     return nullptr;
 }
 
 void ReturnStatementAST::resolve() {
     // tokens = [return, <expression>]
+    // `return;` inferred to return void
+    if (tokens.size() == 1) {
+        return;
+    }
+    //`return expr;`
     if (tokens.front().type != TokenType::RETURN) {
         throw std::logic_error("Incorrect tokens for a return statement");
     }
@@ -309,9 +373,14 @@ void ReturnStatementAST::resolve() {
 }
 
 llvm::Value * ReturnStatementAST::codegen() {
-    auto ret =  this->expression->codegen();
-    Builder->CreateRet(ret);
-    return ret;
+    if (this->expression != nullptr) {
+        auto ret =  this->expression->codegen();
+        Builder->CreateRet(ret);
+        return ret;
+    }else {
+        return Builder->CreateRetVoid();
+        return nullptr;
+    }
 }
 
 std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token>& tokens) {
@@ -325,7 +394,7 @@ std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token>& tokens) {
     auto i = 2;
     std::vector<std::string> arg_identifiers{};
     while (i < tokens.size()) {
-        // we don't expect () inside extern declarations
+        // we don't expect () inside extern declaration arguments
         if (tokens.at(i).type == TokenType::BRACKET_R) {
             break;
         }
@@ -335,8 +404,21 @@ std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token>& tokens) {
         }
         i++;
     }
-    tokens.erase(tokens.begin(), tokens.begin() + i + 2); // +2 => closing ')' and semicolon
-    return std::make_unique<PrototypeAST>(identifier, arg_identifiers);
+    i += 1; // include closing bracket
+
+    auto return_type = TypeIdentifier::VOID;
+    // find return type identifier
+    //TODO: will not work for more complex types like -> (i32, i32)
+    if (tokens.at(i).type == TokenType::ARROW && tokens.at(i+1).type == TokenType::IDENTIFIER) {
+        auto type_ident = tokens.at(i+1).value.value();
+        if (!Parser::type_identifiers.contains(type_ident)) {
+            throw std::runtime_error("Type identifier " + type_ident + " is not recognized by parser");
+        }
+        return_type = Parser::type_identifiers.at(type_ident);
+        i += 2; // include -> and type identifier
+    }
+    tokens.erase(tokens.begin(), tokens.begin() + i + 1); // +1 => include semicolon
+    return std::make_unique<PrototypeAST>(identifier, arg_identifiers, return_type);
 }
 
 void ModuleAST::resolve() {
@@ -538,7 +620,11 @@ llvm::Value * CallExpressionAST::codegen() {
         }
         arg_values.push_back(val);
     }
-
-    return Builder->CreateCall(function, arg_values, "call_tmp");
+    if (function->getReturnType()->isVoidTy()) {
+        Builder->CreateCall(function, arg_values, "");
+        return nullptr;
+    }else {
+        return Builder->CreateCall(function, arg_values, "tmp_call");
+    }
 
 }

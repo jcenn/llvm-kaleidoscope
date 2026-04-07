@@ -80,13 +80,15 @@ void print_ast(const AST_Node* node, int depth = 0) {
 int main(int argc, char* argv[]) {
     Lexer lexer = Lexer();
     std::string file_path = "";
-
-    const auto tester = std::make_unique<LexerTestRunner>();
-    tester->runLexerTestCases();
-    return 0;
+    const bool run_tests = false;
+    if (run_tests) {
+        const auto tester = std::make_unique<LexerTestRunner>();
+        tester->runLexerTestCases();
+        return 0;
+    }
     // Running without arguments
     if (argc == 1) {
-        file_path = "programs/fn_calls";
+        file_path = "programs/extern";
     }else {
         file_path = argv[1];
     }

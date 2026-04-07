@@ -9,10 +9,15 @@
 
 #include "ast.h"
 #include "Token.h"
+#include "Types.h"
 
 
 class Parser {
 public:
+    static inline const std::map<std::string, TypeIdentifier> type_identifiers = {
+        {"void", TypeIdentifier::VOID},
+        {"i32", TypeIdentifier::I32},
+    };
     static std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
 };
 
