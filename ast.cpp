@@ -10,21 +10,6 @@
 #include "Parser.h"
 #include "llvm/IR/Verifier.h"
 
-// From kaleidoscope tutorial:
-// TheContext is an opaque object that owns a lot of core LLVM data structures, such as the type and constant value tables
-std::unique_ptr<llvm::LLVMContext> Context;
-
-// The Builder object is a helper object that makes it easy to generate LLVM instructions. Instances of the IRBuilder class template keep track of the current place to insert instructions and has methods to create new instructions.
-std::unique_ptr<llvm::IRBuilder<>> Builder;
-
-// TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
-std::unique_ptr<llvm::Module> TheModule;
-
-// The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
-std::map<std::string, llvm::Value *> NamedValues;
-
-
-
 std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     // if tokens.length() == 1 -> identifier or literal
     if (tokens.empty()) throw std::runtime_error("Tried to parse an empty expression");
@@ -410,10 +395,10 @@ llvm::Value * LiteralExpressionAST::codegen() {
 void CallExpressionAST::resolve() {
     // expects tokens like [ foo(bar, baz) ]
     if (this->tokens.size() < 3) {
-        throw std::logic_error("Created call expression with less than 3 tokens");
+        throw std::logic_error("Tried to create a call expression with less than 3 tokens");
     }
     if (this->tokens.front().type != TokenType::IDENTIFIER) {
-        throw std::logic_error("Created call expression with no identifier");
+        throw std::logic_error("Tried to create a call expression with no identifier");
     }
 
     this->calee_identifier = this->tokens.front().value.value();
@@ -421,38 +406,21 @@ void CallExpressionAST::resolve() {
     if (this->tokens.size() == 3) {
         return;
     }
+
     size_t arg_start = 2;
     size_t i = arg_start;
 
-    // TODO: consider i < tokens.size() ?
-    while (this->tokens.at(i).type != TokenType::BRACKET_R) {
-        // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
-        // TODO: could cause problems when passing other function calls ex. foo(1, bar(2, 3)) as it could consider the , inside bar to be a terminator
+    // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
+    // TODO: could cause problems when passing other function calls ex. foo(1, bar(2, 3)) as it could consider the , inside bar to be a terminator
+    // omit function identifier, open paren and close paren
+    auto arg_source_tokens = std::vector<Token>(tokens.begin() + 2, tokens.end() - 1);
+    auto arg_tokens = Parser::get_function_arg_tokens(arg_source_tokens);
 
-        // if we hit a '(' in arguments, we skip to the matching ')' to handle calls like foo(1, foo(2, 3))
-        if (tokens.at(i).type == TokenType::BRACKET_L) {
-            i = Parser::find_matching_paren_index(tokens, i, TokenType::BRACKET_L, TokenType::BRACKET_R) + 1;
-            continue;
-        }
-
-        // We hit the end of the first argument
-        if (tokens.at(i).type == TokenType::COMMA) {
-            auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.begin() + i);
-            auto expression = parse_expression(expr_tokens);
-            this->arg_expressions.push_back(std::move(expression));
-            arg_start = i + 1;
-        }
-
-        i++;
-    }
-    // we hit the closing paren
-    // if function has arguments we consume the last one
-    // i == 3 would indicate a function without arguments -> Token[foo, (, )]
-    if (i != 2) {
-        auto expr_tokens = std::vector<Token>(tokens.begin() + arg_start, tokens.end() - 1);
-        auto expression = parse_expression(expr_tokens);
+    for (auto& toks : arg_tokens) {
+        auto expression = parse_expression(toks);
         this->arg_expressions.push_back(std::move(expression));
     }
+
 }
 
 llvm::Value * CallExpressionAST::codegen() {

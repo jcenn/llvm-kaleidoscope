@@ -9,4 +9,19 @@ enum class TypeIdentifier {
     VOID,
     I32,
 };
+
+
+enum class BinaryOperator {
+    Add,
+    Subtract,
+    // Multiply,
+    // Divide,
+    // Modulus,
+    // Equals,
+    // NotEquals,
+    // LessThan,
+    // GreaterThan,
+    // LessThanOrEquals,
+    // GreaterThanOrEquals,
+};
 #endif //LLVM_KALEIDOSCOPE_TYPES_H

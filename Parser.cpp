@@ -6,6 +6,18 @@
 
 #include <stack>
 
+// From kaleidoscope tutorial:
+// TheContext is an opaque object that owns a lot of core LLVM data structures, such as the type and constant value tables
+std::unique_ptr<llvm::LLVMContext> Context;
+
+// The Builder object is a helper object that makes it easy to generate LLVM instructions. Instances of the IRBuilder class template keep track of the current place to insert instructions and has methods to create new instructions.
+std::unique_ptr<llvm::IRBuilder<>> Builder;
+
+// TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
+std::unique_ptr<llvm::Module> TheModule;
+
+// The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
+std::map<std::string, llvm::Value *> NamedValues;
 
 void Parser::InitializeCodeGen() {
     Context = std::make_unique<llvm::LLVMContext>();
@@ -40,6 +52,32 @@ size_t Parser::find_matching_paren_index(std::vector<Token> &tokens, size_t open
     }
     throw std::runtime_error("Tried to parse an expression with mismatched parentheses");
 
+}
+
+std::vector<std::vector<Token>> Parser::get_function_arg_tokens(std::vector<Token> &tokens) {
+    std::vector<std::vector<Token>> arg_tokens = std::vector<std::vector<Token>>();
+    // skip identifier and opening paren
+    size_t arg_start = 0;
+    for (size_t i = arg_start; i < tokens.size(); i++) {
+        const auto& tok = tokens.at(i);
+        if (tok.type == TokenType::BRACKET_L) {
+            i = Parser::find_matching_paren_index(tokens, i, TokenType::BRACKET_L, TokenType::BRACKET_R);
+            continue;
+        }
+
+        if (tok.type == TokenType::COMMA) {
+            auto new_vec = std::vector(tokens.begin() + arg_start, tokens.begin() + i);
+            arg_tokens.push_back(
+                new_vec
+            );
+            arg_start = i;
+        }
+    }
+    // add last arg
+    arg_tokens.push_back(
+        std::vector(tokens.begin() + arg_start, tokens.end())
+    );
+    return arg_tokens;
 }
 
 std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens) {

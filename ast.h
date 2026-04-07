@@ -16,31 +16,12 @@
 #include "Types.h"
 
 
+// Provided by Parser.cpp
 extern std::unique_ptr<llvm::LLVMContext> Context;
-
-// The Builder object is a helper object that makes it easy to generate LLVM instructions. Instances of the IRBuilder class template keep track of the current place to insert instructions and has methods to create new instructions.
 extern std::unique_ptr<llvm::IRBuilder<>> Builder;
-
-// TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all of the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
 extern std::unique_ptr<llvm::Module> TheModule;
-
-// The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
 extern std::map<std::string, llvm::Value *> NamedValues;
-extern void InitializeCodeGen();
 
-enum class BinaryOperator {
-    Add,
-    Subtract,
-    // Multiply,
-    // Divide,
-    // Modulus,
-    // Equals,
-    // NotEquals,
-    // LessThan,
-    // GreaterThan,
-    // LessThanOrEquals,
-    // GreaterThanOrEquals,
-};
 
 class AST_Node {
 protected:
@@ -64,7 +45,7 @@ public:
     void codegen();
 };
 
-// For function declarations (name + args) used either for module functions or imported ones
+// For function declarations (name + args + return type) used either for module functions or imported ones
 class PrototypeAST : public AST_Node {
 public:
     // Assume function returns void unless specified otherwise
@@ -96,9 +77,6 @@ public:
     std::vector<std::unique_ptr<StatementAST>> statements;
     std::unique_ptr<PrototypeAST> prototype;
 
-    // FunctionAST(const std::vector<Token>& tokens, std::string identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node(tokens) {
-    //     prototype = std::make_unique<PrototypeAST>(identifier, args, return_type);
-    // };
     FunctionAST(const std::vector<Token>& tokens, std::unique_ptr<PrototypeAST> proto) : AST_Node(tokens) {
         prototype = std::move(proto);
     };
@@ -112,7 +90,7 @@ class ExpressionAST : public AST_Node {
 public:
     explicit ExpressionAST(const std::vector<Token>& tokens) : AST_Node(tokens) { }
     ~ExpressionAST() override = default;
-    virtual void resolve() override = 0;
+    void resolve() override = 0;
     virtual llvm::Value* codegen() = 0;
 };
 
@@ -195,7 +173,5 @@ public:
 
     llvm::Value* codegen() override;
 };
-
-
 
 #endif //LLVM_KALEIDOSCOPE_AST_H

@@ -19,6 +19,10 @@ namespace Parser {
 
     size_t find_matching_paren_index(std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok);
 
+    // Splits list of tokens inside function parentheses and returns a vector where vec[n] corresponds to tokens for n-th argument
+    // Must only tokens between function's ( and ) tokens
+    std::vector<std::vector<Token>> get_function_arg_tokens(std::vector<Token> &tokens);
+
     inline const std::map<std::string, TypeIdentifier> type_identifiers = {
         {"void", TypeIdentifier::VOID},
         {"i32", TypeIdentifier::I32},
