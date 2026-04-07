@@ -6,6 +6,7 @@
 
 #include "Lexer.h"
 #include "Parser.h"
+#include "TestRunner.h"
 
 // TODO: currently identifier tokens include literals, iterate over them and turn identifiers into proper literals
 
@@ -80,6 +81,9 @@ int main(int argc, char* argv[]) {
     Lexer lexer = Lexer();
     std::string file_path = "";
 
+    const auto tester = std::make_unique<LexerTestRunner>();
+    tester->runLexerTestCases();
+    return 0;
     // Running without arguments
     if (argc == 1) {
         file_path = "programs/fn_calls";

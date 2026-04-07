@@ -63,19 +63,13 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
 
     // variable / literal references
     if (tokens.size() == 1) {
-        // TODO: differentiate between identifiers and literals in a different pass
-        bool is_literal = true;
-        for (const char c : tokens.at(0).value.value()) {
-            if (std::isalpha(c)) {
-                is_literal = false;
-                break;
-            }
-        }
         std::unique_ptr<ExpressionAST> expr;
-        if (is_literal) {
+        if (tokens.front().type == TokenType::LITERAL) {
             expr = std::make_unique<LiteralExpressionAST>(tokens);
-        }else {
+        }else if (tokens.front().type == TokenType::IDENTIFIER) {
             expr = std::make_unique<VariableExpressionAST>(tokens);
+        }else {
+            throw std::runtime_error("Tried to parse an expression with invalid identifier");
         }
         expr->resolve();
         return expr;

@@ -21,6 +21,8 @@ add_executable(llvm_kaleidoscope main.cpp
         Parser.h
         ast.cpp
         ast.h
+        TestRunner.cpp
+        TestRunner.h
 )
 
 # ... rest of your setup ...

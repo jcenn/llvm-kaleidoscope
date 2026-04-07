@@ -111,9 +111,22 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             throw std::runtime_error("Couldn't parse identifier");
         }
 
-        std::string identifier = source.substr(start_index, count);
-        tokens.emplace_back(TokenType::IDENTIFIER, identifier);
-        index += identifier.length();
+        std::string value = source.substr(start_index, count);
+
+        // TODO: differentiate between identifiers and literals in a different pass
+        bool is_literal = true;
+        for (const char c : value) {
+            if (std::isalpha(c)) {
+                is_literal = false;
+                break;
+            }
+        }
+        if (is_literal) {
+            tokens.emplace_back(TokenType::LITERAL, value);
+        }else {
+            tokens.emplace_back(TokenType::IDENTIFIER, value);
+        }
+        index += value.length();
         continue;
     }
 
