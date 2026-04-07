@@ -39,6 +39,14 @@ std::vector<Token> Lexer::parse(const std::string& input) {
 
         if (index >= source_length) break;
 
+        // comments
+        if (source[index] == '/' && source[index + 1] == '/') {
+            // skip all characters for line that starts with //
+            while (index < source_length && source[index] != '\n') {
+                index++;
+            }
+            continue;
+        }
         // Check all possible token types
 
         if (source[index] == '-' && source[index + 1] == '>') {
