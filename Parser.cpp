@@ -70,7 +70,7 @@ std::vector<std::vector<Token>> Parser::get_function_arg_tokens(std::vector<Toke
             arg_tokens.push_back(
                 new_vec
             );
-            arg_start = i;
+            arg_start = i+1;
         }
     }
     // add last arg
