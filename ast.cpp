@@ -23,40 +23,7 @@ std::unique_ptr<llvm::Module> TheModule;
 // The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
 std::map<std::string, llvm::Value *> NamedValues;
 
-void InitializeCodeGen() {
-    Context = std::make_unique<llvm::LLVMContext>();
-    Builder = std::make_unique<llvm::IRBuilder<>>(*Context);
-    TheModule = std::make_unique<llvm::Module>("main module", *Context);
-}
 
-bool is_binary_operator(const Token& tok) {
-    switch (tok.type) {
-        case TokenType::PLUS: [[fallthrough]];
-        case TokenType::MINUS:
-            return true;
-        default: return false;
-    }
-    return false;
-}
-
-size_t find_matching_paren_index(std::vector<Token> &tokens, size_t open_paren_i) {
-    auto stack = std::stack<TokenType>();
-    stack.push(TokenType::BRACKET_L);
-    size_t i = open_paren_i + 1;
-    while (i < tokens.size()) {
-        if (stack.top() == TokenType::BRACKET_L && tokens.at(i).type == TokenType::BRACKET_R) {
-            stack.pop();
-        }else if (tokens.at(i).type == TokenType::BRACKET_L) {
-            stack.push(TokenType::BRACKET_L);
-        }
-        if (stack.empty()) {
-            return i;
-        }
-        i++;
-    }
-    throw std::runtime_error("Tried to parse an expression with mismatched parentheses");
-
-}
 
 std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     // if tokens.length() == 1 -> identifier or literal
@@ -80,7 +47,7 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     // TODO: remove literal after fixing differentiating between them
     if ((tokens.front().type == TokenType::IDENTIFIER) && tokens.at(1).type == TokenType::BRACKET_L && tokens.back().type == TokenType::BRACKET_R) {
         // TODO: check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
-        size_t end_paren_i = find_matching_paren_index(tokens, 1);
+        size_t end_paren_i = Parser::find_matching_paren_index(tokens, 1, TokenType::BRACKET_L, TokenType::BRACKET_R);
         if (end_paren_i == tokens.size()-1) {
             auto expr = std::make_unique<CallExpressionAST>(tokens);
             expr->resolve();
@@ -93,7 +60,7 @@ std::unique_ptr<ExpressionAST> parse_expression(std::vector<Token> &tokens) {
     bool binary_exp = false;
     for (size_t i{}; i < tokens.size(); i++) {
         // TODO: check other binary expression tokens
-        if (is_binary_operator(tokens.at(i))) {
+        if (Parser::is_binary_operator(tokens.at(i))) {
             binary_exp = true;
         }
     }
@@ -112,83 +79,27 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
     // create AST Node
     // return node and number of consumed tokens (reference parameter?) or just consume them from reference
     // tokens = [fn, identifier, (, args..., ), '->', 'type_ident', {, ..., }]
-    auto const& identifier_token = tokens.at(1);
-    auto ret_type = TypeIdentifier::VOID;
-
-    if (! identifier_token.value) {
-        throw std::logic_error("FunctionAST::parse_function(): empty identifier");
-    }
-
 
     std::unique_ptr<FunctionAST> functionAST = nullptr;
-    std::vector<std::string> arg_identifiers{};
-
-    auto arg_index = 2;
-    // Parse function arguments
-    while (tokens.at(arg_index).type != TokenType::BRACKET_R) {
-        if (tokens.at(arg_index).type == TokenType::IDENTIFIER) {
-            arg_identifiers.push_back(tokens.at(arg_index).value.value());
-        }
-        arg_index++;
-    }
 
     size_t open_brace_i = 0;
-    size_t close_brace_i = 0;
-    // find the opening brace
+    // find the opening and closing brace
     while (tokens[open_brace_i].type != TokenType::BRACE_L) open_brace_i++;
+    size_t close_brace_i =  Parser::find_matching_paren_index(tokens, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
 
-    // find the matching closing brace
-    std::stack<TokenType> stack{};
-    stack.push(TokenType::BRACE_L);
-    close_brace_i = open_brace_i + 1;
-    while (!stack.empty()) {
-        if (tokens[close_brace_i].type == TokenType::BRACE_L) {
-            stack.push(TokenType::BRACE_L);
-            close_brace_i++;
-            continue;
-        }
-
-        if (tokens[close_brace_i].type == TokenType::BRACE_R && stack.top() == TokenType::BRACE_L) {
-            stack.pop();
-            close_brace_i++;
-            continue;
-        }
-
-        if (tokens[close_brace_i].type == TokenType::BRACE_R && stack.top() == TokenType::BRACE_R) {
-            throw std::logic_error("Braces do not match");
-        }
-
-        // skip tokens that we don't care about here
-        close_brace_i++;
-    }
-
-    // find return type identifier
-    //TODO: will not work for more complex types like -> (i32, i32)
-    if (tokens.at(open_brace_i-2).type == TokenType::ARROW && tokens.at(open_brace_i-1).type == TokenType::IDENTIFIER) {
-        auto type_ident = tokens.at(open_brace_i-1).value.value();
-        if (!Parser::type_identifiers.contains(type_ident)) {
-            throw std::runtime_error("Type identifier " + type_ident + " is not recognized by parser");
-        }
-        ret_type = Parser::type_identifiers.at(type_ident);
-    }
-
-    // main has inferred type
-    if (identifier_token.value.value() == "main") {
-        ret_type = TypeIdentifier::I32;
-    }
+    auto proto_tokens = std::vector<Token>(tokens.begin() + 1, tokens.begin() + open_brace_i);
+    auto prototype = Parser::parse_prototype( proto_tokens );
 
 
     // tokens [open_brace_i : close_brace_i] contains function body + braces
-
     // Empty function
     if (open_brace_i + 1 == close_brace_i) {
-        // empty token vector
-        functionAST = std::make_unique<FunctionAST>(std::vector<Token>{}, identifier_token.value.value(), std::vector<std::string>{}, ret_type);
+        functionAST = std::make_unique<FunctionAST>(std::vector<Token>{}, std::move(prototype));
     }else {
-        auto body_tokens = std::vector<Token>(tokens.begin() + open_brace_i + 1, tokens.begin() + close_brace_i - 1);
-        functionAST = std::make_unique<FunctionAST>(body_tokens, identifier_token.value.value(), arg_identifiers, ret_type);
+        auto body_tokens = std::vector<Token>(tokens.begin() + open_brace_i + 1, tokens.begin() + close_brace_i);
+        functionAST = std::make_unique<FunctionAST>(body_tokens, std::move(prototype));
         functionAST->resolve();
-        tokens.erase(tokens.begin(), tokens.begin() + close_brace_i);
+        tokens.erase(tokens.begin(), tokens.begin() + close_brace_i + 1);
     }
 
     return functionAST;
@@ -197,7 +108,7 @@ std::unique_ptr<FunctionAST> parse_function(std::vector<Token> &tokens) {
 llvm::Function * PrototypeAST::codegen() {
 
     std::vector<llvm::Type*> arg_types{};
-    for (auto& arg : this->arg_identifiers) {
+    for (auto& arg : this->args) {
         arg_types.push_back(llvm::Type::getInt32Ty(*Context));
     }
     llvm::Type* return_type = nullptr;
@@ -217,15 +128,14 @@ llvm::Function * PrototypeAST::codegen() {
     size_t idx = 0;
     // sets names for arguments. Mostly used for debugging IR
     for (auto& arg : fn->args()) {
-        arg.setName(this->arg_identifiers[idx++]);
+        arg.setName(this->args[idx++].first);
     }
     return fn;
 }
 
 void FunctionAST::resolve() {
-
     // iterate over tokens, split them into statements and call resolve on them
-    std::cout << "Trying to resolve function " << this->prototype->identifier << std::endl;
+    // std::cout << "Trying to resolve function " << this->prototype->identifier << std::endl;
     size_t token_count = 0;
     while (!this->tokens.empty()) {
         auto const& tok = this->tokens.at(token_count);
@@ -239,30 +149,7 @@ void FunctionAST::resolve() {
         // + 1 to include the semicolon
         this->tokens.erase(this->tokens.begin(), this->tokens.begin() + token_count + 1);
 
-        switch (statement_tokens.front().type) {
-            case TokenType::LET: {
-                auto statement = std::make_unique<LetStatementAST>(statement_tokens);
-                statement->resolve();
-                this->statements.push_back(std::move(statement));
-                break;
-            }
-            case TokenType::RETURN: {
-                auto statement = std::make_unique<ReturnStatementAST>(statement_tokens);
-                statement->resolve();
-                this->statements.push_back(std::move(statement));
-                break;
-            }
-            // Call statement like InitWindow();
-            case TokenType::IDENTIFIER: {
-                auto statement = std::make_unique<CallStatementAST>(statement_tokens);
-                statement->resolve();
-                this->statements.push_back(std::move(statement));
-                break;
-            }
-            default:
-                throw std::runtime_error("Statement not recognized");
-
-        }
+        this->statements.push_back(Parser::parse_statement(statement_tokens));
         token_count = 0;
 
     }
@@ -383,43 +270,7 @@ llvm::Value * ReturnStatementAST::codegen() {
     }
 }
 
-std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token>& tokens) {
-    if (tokens.front().type != TokenType::EXTERN) {
-        throw std::logic_error("Incorrect tokens for a prototype");
-    }
 
-    // find identifier and arguments
-    std::string identifier = tokens.at(1).value.value();
-    // opening bracket
-    auto i = 2;
-    std::vector<std::string> arg_identifiers{};
-    while (i < tokens.size()) {
-        // we don't expect () inside extern declaration arguments
-        if (tokens.at(i).type == TokenType::BRACKET_R) {
-            break;
-        }
-
-        if (tokens.at(i).type == TokenType::IDENTIFIER || tokens.at(i).type == TokenType::LITERAL) {
-            arg_identifiers.push_back(tokens.at(i).value.value());
-        }
-        i++;
-    }
-    i += 1; // include closing bracket
-
-    auto return_type = TypeIdentifier::VOID;
-    // find return type identifier
-    //TODO: will not work for more complex types like -> (i32, i32)
-    if (tokens.at(i).type == TokenType::ARROW && tokens.at(i+1).type == TokenType::IDENTIFIER) {
-        auto type_ident = tokens.at(i+1).value.value();
-        if (!Parser::type_identifiers.contains(type_ident)) {
-            throw std::runtime_error("Type identifier " + type_ident + " is not recognized by parser");
-        }
-        return_type = Parser::type_identifiers.at(type_ident);
-        i += 2; // include -> and type identifier
-    }
-    tokens.erase(tokens.begin(), tokens.begin() + i + 1); // +1 => include semicolon
-    return std::make_unique<PrototypeAST>(identifier, arg_identifiers, return_type);
-}
 
 void ModuleAST::resolve() {
     if (this->tokens.empty()) {
@@ -427,7 +278,6 @@ void ModuleAST::resolve() {
     }
 
     // Consume tokens in a loop converting them to AST nodes
-    size_t i{};
     while (!this->tokens.empty()) {
         auto token = this->tokens.front();
         // At this point we expect the module to only have the main function, but it could be later extended
@@ -440,7 +290,11 @@ void ModuleAST::resolve() {
                 break;
             }
             case TokenType::EXTERN: {
-                auto proto = parse_prototype(tokens);
+                auto semi_colon_i = 0;
+                while (semi_colon_i < tokens.size() && tokens.at(semi_colon_i).type != TokenType::SEMICOLON) semi_colon_i++;
+                auto proto_tokens = std::vector<Token>(tokens.begin() + 1, tokens.begin() + semi_colon_i);
+                auto proto = Parser::parse_prototype(proto_tokens);
+                tokens.erase(tokens.begin(), tokens.begin() + semi_colon_i + 1);
                 std::cout << "Found external function " << proto->identifier << std::endl;
                 this->declarations.push_back(std::move(proto));
                 break;
@@ -448,7 +302,6 @@ void ModuleAST::resolve() {
             default:
                 throw std::logic_error("ModuleAST::resolve(): unknown token type");
         }
-        i++;
     }
 }
 
@@ -472,7 +325,7 @@ void BinaryExpressionAST::resolve() {
     // Find the operator for current expression
     size_t operator_index = 0;
     for (size_t i{}; i < tokens.size(); i++) {
-        if (is_binary_operator(tokens.at(i))) {
+        if (Parser::is_binary_operator(tokens.at(i))) {
             operator_index = i;
             // Currently stopping at first operator, but we should handle precedence priority
             break;
@@ -578,7 +431,7 @@ void CallExpressionAST::resolve() {
 
         // if we hit a '(' in arguments, we skip to the matching ')' to handle calls like foo(1, foo(2, 3))
         if (tokens.at(i).type == TokenType::BRACKET_L) {
-            i = find_matching_paren_index(tokens, i) + 1;
+            i = Parser::find_matching_paren_index(tokens, i, TokenType::BRACKET_L, TokenType::BRACKET_R) + 1;
             continue;
         }
 

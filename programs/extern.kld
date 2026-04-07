@@ -6,6 +6,7 @@ fn init_rand() -> void {
     srand(time(0));
     return;
 }
+
 fn main() -> void {
     init_rand();
     return rand();

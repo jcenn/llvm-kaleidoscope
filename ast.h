@@ -6,6 +6,7 @@
 #define LLVM_KALEIDOSCOPE_AST_H
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "llvm/IR/Value.h"
@@ -69,10 +70,10 @@ public:
     // Assume function returns void unless specified otherwise
     TypeIdentifier ret_type = TypeIdentifier::VOID;
     std::string identifier;
-    std::vector<std::string> arg_identifiers;
-    PrototypeAST(const std::string& identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node({}) {
+    std::vector<std::pair<std::string, TypeIdentifier>> args{};
+    PrototypeAST(const std::string& identifier, std::vector<std::pair<std::string, TypeIdentifier>> args, TypeIdentifier return_type) : AST_Node({}) {
         this->identifier = identifier;
-        this->arg_identifiers = args;
+        this->args = std::move(args);
         this->ret_type = return_type;
     };
     ~PrototypeAST() noexcept override = default;
@@ -94,11 +95,12 @@ class FunctionAST : public AST_Node {
 public:
     std::vector<std::unique_ptr<StatementAST>> statements;
     std::unique_ptr<PrototypeAST> prototype;
-    // std::string params;
-    // std::string identifier;
 
-    FunctionAST(const std::vector<Token>& tokens, std::string identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node(tokens) {
-        prototype = std::make_unique<PrototypeAST>(identifier, args, return_type);
+    // FunctionAST(const std::vector<Token>& tokens, std::string identifier, std::vector<std::string> args, TypeIdentifier return_type) : AST_Node(tokens) {
+    //     prototype = std::make_unique<PrototypeAST>(identifier, args, return_type);
+    // };
+    FunctionAST(const std::vector<Token>& tokens, std::unique_ptr<PrototypeAST> proto) : AST_Node(tokens) {
+        prototype = std::move(proto);
     };
     ~FunctionAST() noexcept override = default;
     void resolve() override;

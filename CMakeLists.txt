@@ -30,6 +30,9 @@ add_executable(llvm_kaleidoscope main.cpp
 include_directories(${LLVM_INCLUDE_DIRS})
 
 add_definitions(${LLVM_DEFINITIONS})
+
+# disables warnings
+add_definitions(-w)
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
 llvm_map_components_to_libnames(llvm_libs support core)

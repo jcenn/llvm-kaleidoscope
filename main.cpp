@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
 
     print_ast(AST.get());
 
-    InitializeCodeGen();
+    Parser::InitializeCodeGen();
     AST->codegen();
 
     if (llvm::verifyModule(*TheModule, &llvm::errs())) {

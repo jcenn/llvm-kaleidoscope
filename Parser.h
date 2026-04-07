@@ -11,15 +11,26 @@
 #include "Token.h"
 #include "Types.h"
 
+namespace Parser {
 
-class Parser {
-public:
-    static inline const std::map<std::string, TypeIdentifier> type_identifiers = {
+    void InitializeCodeGen();
+
+    bool is_binary_operator(const Token& tok);
+
+    size_t find_matching_paren_index(std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok);
+
+    inline const std::map<std::string, TypeIdentifier> type_identifiers = {
         {"void", TypeIdentifier::VOID},
         {"i32", TypeIdentifier::I32},
     };
-    static std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
-};
+    std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
+    std::unique_ptr<StatementAST> parse_statement(const std::vector<Token>& tokens);
+
+    std::vector<std::pair<std::string, TypeIdentifier>> parse_function_parameters(const std::vector<Token> &tokens);
+
+    std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token> &tokens);
+}
+
 
 
 #endif //LLVM_KALEIDOSCOPE_PARSER_H
