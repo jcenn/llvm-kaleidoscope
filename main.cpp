@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     // }
     std::unique_ptr<ModuleAST> AST = Parser::parse_tokens(tokens);
 
-    print_ast(AST.get());
+    // print_ast(AST.get());
 
     Parser::InitializeCodeGen();
     AST->codegen();
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     if (llvm::verifyModule(*TheModule, &llvm::errs())) {
         std::cout << "Error: Module is broken!" << std::endl;
     }else {
-        std::cout << "Module seems to be okay" << std::endl;
+        std::cout << "Module verified" << std::endl;
     }
     TheModule->print(llvm::outs(), nullptr);
 

@@ -270,7 +270,7 @@ void ModuleAST::resolve() {
         switch (token.type) {
             case TokenType::FN: {
                 auto node = parse_function(tokens);
-                std::cout << "Parsed a function: " << node->prototype->identifier << std::endl;
+                // std::cout << "Parsed a function: " << node->prototype->identifier << std::endl;
                 this->declarations.push_back(std::move(node));
                 break;
             }
@@ -280,7 +280,7 @@ void ModuleAST::resolve() {
                 auto proto_tokens = std::vector<Token>(tokens.begin() + 1, tokens.begin() + semi_colon_i);
                 auto proto = Parser::parse_prototype(proto_tokens);
                 tokens.erase(tokens.begin(), tokens.begin() + semi_colon_i + 1);
-                std::cout << "Found external function " << proto->identifier << std::endl;
+                // std::cout << "Found external function " << proto->identifier << std::endl;
                 this->declarations.push_back(std::move(proto));
                 break;
             }
@@ -323,7 +323,7 @@ void BinaryExpressionAST::resolve() {
     switch (tokens.at(operator_index).type) {
         case TokenType::PLUS: {
             this->operator_ = BinaryOperator::Add;
-            std::cout << "Parsed a plus operator" << std::endl;
+            // std::cout << "Parsed a plus operator" << std::endl;
             break;
         }
         case TokenType::MINUS: {
@@ -382,7 +382,6 @@ llvm::Value * LiteralExpressionAST::codegen() {
     int num = 0;
     try {
         num = std::stoi(this->value_str);
-        std::cout << "Integer: " << num << "\n";
     } catch (const std::invalid_argument& e) {
         // String contained no digits
         throw std::logic_error("Tried to parse " + this->value_str + " as a number");

@@ -4,7 +4,7 @@ Similar to official kaleidoscope specs
 - if / else statements
 - allows for function declarations
 - extern keyword for std::lib functions
-
+- color parameter for strings / printf (ANSI)
 ### Example program
 ```
     fn add(x, y) -> i32 {
