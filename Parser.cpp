@@ -101,7 +101,7 @@ std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> t
 
 
 // expects tokens to only contain the content between function parentheses ex. for `foo(a, b) tokens = [a, ',', b]
-std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_parameters(std::span<const Token> &tokens) {
+std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_parameters(std::span<const Token> tokens) {
     // Parse function arguments
     auto arg_identifiers = std::vector<std::pair<std::string, TypeIdentifier>>();
     size_t arg_index = 0;
@@ -117,7 +117,7 @@ std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_param
     return arg_identifiers;
 }
 
-std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span<const Token>& tokens)
+std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span<const Token> tokens)
 {
     std::vector<std::unique_ptr<StatementAST>> statements{};
     // iterate over tokens, split them into statements and call resolve on them
@@ -141,7 +141,7 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
     return statements;
 }
 
-std::unique_ptr<PrototypeAST> Parser::parse_prototype(std::span<const Token> &tokens) {
+std::unique_ptr<PrototypeAST> Parser::parse_prototype(std::span<const Token> tokens) {
     auto const& identifier_token = tokens.at(0);
     auto ret_type = TypeIdentifier::VOID;
 
@@ -202,7 +202,7 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
 
 /// Parse return statements
 
-std::unique_ptr<ReturnStatementAST> Parser::parse_return_statemen(std::span<const Token>& tokens)
+std::unique_ptr<ReturnStatementAST> Parser::parse_return_statemen(std::span<const Token> tokens)
 {
     auto expression_tokens = tokens.subspan(1, tokens.size()-1);
 
@@ -210,9 +210,20 @@ std::unique_ptr<ReturnStatementAST> Parser::parse_return_statemen(std::span<cons
     return std::move(return_statement);
 }
 
-std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token>& tokens)
+std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)
 {
     std::unique_ptr<ExpressionAST> expression{};
+
+    // TODO: paren expressions - first token (, last token )
+    if (tokens.front().type == TokenType::BRACKET_L)
+    {
+        auto close_paren_i = find_matching_paren_index({tokens.begin(), tokens.end()}, 0, TokenType::BRACKET_L, TokenType::BRACKET_R);
+        // whole expression is wrapped with ( )
+        if (close_paren_i == tokens.size()-1)
+        {
+            return std::move(parse_expression(tokens.subspan(1, tokens.size()-2))); // -2 to exclude both ( and )
+        }
+    }
 
     // if tokens.length() == 1 -> identifier or literal
     if (tokens.empty()) throw std::runtime_error("Tried to parse an empty expression");
@@ -231,10 +242,13 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token>& 
         return std::move(expr);
     }
 
-    // Function calls
-    if ((tokens.front().type == TokenType::IDENTIFIER) && tokens.at(1).type == TokenType::BRACKET_L && tokens.back().type == TokenType::BRACKET_R) {
-        // TODO: check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
-        size_t end_paren_i = Parser::find_matching_paren_index({tokens.begin(), tokens.end()}, 1, TokenType::BRACKET_L, TokenType::BRACKET_R);
+    // [identifier, '(', ...] start of a function call
+    if ((tokens.front().type == TokenType::IDENTIFIER) && tokens.at(1).type == TokenType::BRACKET_L) {
+        // We need to check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
+        size_t end_paren_i = find_matching_paren_index({tokens.begin(), tokens.end()}, 1, TokenType::BRACKET_L, TokenType::BRACKET_R);
+
+        // Whole expression is a function call.
+        // otherwise we go out of the if statement and continue trying to identify the expression type
         if (end_paren_i == tokens.size()-1) {
             //TODO: implement call expressions
             //auto expr = std::make_unique<CallExpressionAST>(tokens);
@@ -243,7 +257,7 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token>& 
         }
     }
 
-    // Only other possibility is a binary exp
+    // check if it's a binary expression
     expression = parse_binary_expression(tokens);
     if (expression != nullptr)
     {
@@ -251,38 +265,50 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token>& 
     }
 
     throw std::runtime_error("Tried to parse an invalid expression");
-    return std::move(expression);
 }
 
-std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const Token>& tokens)
+std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const Token> tokens)
 {
-    // TODO: implement
-    // TODO: modify to handle more complex expressions
-    // only parse first 3 tokens for expressions like 1 + 3
+    // NOTE: We should actually start splitting sub-expressions from right to left
+    // If we go from left to right an expression like 1 - 2 + 3 will evaluate to
+    // 1 -
+    //      2 + 3
+    // and then to
+    // 1 - 5
+    // which is the opposite of what we want
+
+    // look for a binary expression operator (+, -, /, etc.)
     bool binary_exp = false;
-    for (size_t i{}; i < tokens.size(); i++) {
-        // TODO: check other binary expression tokens
-        if (Parser::is_binary_operator(tokens.at(i))) {
+    size_t operator_i{};
+    size_t last_found_operator_i{};
+    while (operator_i < tokens.size()) {
+        const auto& token = tokens.at(operator_i);
+
+        // we hit a function call or paren expression so we want to go around it
+        if (token.type == TokenType::BRACKET_L)
+        {
+            operator_i = find_matching_paren_index({tokens.begin(), tokens.end()}, operator_i, TokenType::BRACKET_L, TokenType::BRACKET_R) + 1;
+            continue;
+        }
+
+        if (binary_operators.contains(token.type)) {
+            last_found_operator_i = operator_i;
             binary_exp = true;
         }
+        operator_i++;
     }
-    // if (binary_exp) {
-    //     auto expr = std::make_unique<BinaryExpressionAST>(tokens);
-    //     // expr->resolve();
-    //     return expr;
-    // }
+    if (binary_exp) {
+        auto lhs_tokens = tokens.subspan(0, last_found_operator_i);
+        auto rhs_tokens = tokens.subspan(last_found_operator_i + 1, tokens.size() - (last_found_operator_i + 1));
+        BinaryOperator bin_operator = binary_operators.at(tokens.at(last_found_operator_i).type);
+        auto expr = std::make_unique<BinaryExpressionAST>(
+            bin_operator,
+            parse_expression(lhs_tokens),
+            parse_expression(rhs_tokens)
+        );
+        return expr;
+    }
     return nullptr;
-}
-
-
-bool Parser::is_binary_operator(const Token& tok) {
-    switch (tok.type) {
-        case TokenType::PLUS: [[fallthrough]];
-        case TokenType::MINUS:
-            return true;
-        default: return false;
-    }
-    return false;
 }
 
 size_t Parser::find_matching_paren_index(const std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok) {

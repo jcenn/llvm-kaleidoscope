@@ -30,15 +30,15 @@ namespace Parser {
     std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
 
     std::unique_ptr<FunctionAST> parse_function_def(std::span<const Token> tokens);
-    std::unique_ptr<PrototypeAST> parse_prototype(std::span<const Token> &tokens);
-    std::vector<std::pair<std::string, TypeIdentifier>> parse_function_parameters(std::span<const Token> &tokens);
-    std::vector<std::unique_ptr<StatementAST>> parse_function_body(std::span<const Token> &tokens);
+    std::unique_ptr<PrototypeAST> parse_prototype(std::span<const Token> tokens);
+    std::vector<std::pair<std::string, TypeIdentifier>> parse_function_parameters(std::span<const Token> tokens);
+    std::vector<std::unique_ptr<StatementAST>> parse_function_body(std::span<const Token> tokens);
 
     std::unique_ptr<StatementAST> parse_statement(std::span<const Token> tokens, bool top_level = false);
-    std::unique_ptr<ReturnStatementAST> parse_return_statemen(std::span<const Token> &tokens);
+    std::unique_ptr<ReturnStatementAST> parse_return_statemen(std::span<const Token> tokens);
 
-    std::unique_ptr<ExpressionAST> parse_expression(std::span<const Token> &tokens);
-    std::unique_ptr<ExpressionAST> parse_binary_expression(std::span<const Token> &tokens);
+    std::unique_ptr<ExpressionAST> parse_expression(std::span<const Token> tokens);
+    std::unique_ptr<ExpressionAST> parse_binary_expression(std::span<const Token> tokens);
 }
 
 

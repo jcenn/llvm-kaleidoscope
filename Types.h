@@ -4,6 +4,7 @@
 
 #ifndef LLVM_KALEIDOSCOPE_TYPES_H
 #define LLVM_KALEIDOSCOPE_TYPES_H
+#include <set>
 
 enum class TypeIdentifier {
     VOID,
@@ -24,4 +25,5 @@ enum class BinaryOperator {
     // LessThanOrEquals,
     // GreaterThanOrEquals,
 };
+
 #endif //LLVM_KALEIDOSCOPE_TYPES_H

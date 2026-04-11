@@ -4,9 +4,13 @@
 
 #ifndef LLVM_KALEIDOSCOPE_TOKEN_H
 #define LLVM_KALEIDOSCOPE_TOKEN_H
+
+#include "Types.h"
+
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <map>
 
 enum class TokenType {
     // --- KEYWORDS ---
@@ -34,6 +38,10 @@ enum class TokenType {
     LITERAL             // static values (numbers / strings / booleans / etc.)
 };
 
+inline std::map<TokenType, BinaryOperator> binary_operators = {
+    {TokenType::PLUS, BinaryOperator::Add},
+    {TokenType::MINUS, BinaryOperator::Subtract},
+};
 
 struct Token {
     TokenType type;
