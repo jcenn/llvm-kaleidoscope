@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
     }
     // Running without arguments
     if (argc == 1) {
-        file_path = "programs/test";
+        file_path = "programs/extern";
     }else {
         file_path = argv[1];
     }

@@ -20,7 +20,8 @@ Similar to official kaleidoscope specs
 ## TODO
 - [ ] Fully functional arithmetic expression parsing (order of precedence)
 - [x] Function calls
-- [x] Extern keyword
+- [x] Extern statements
 - [x] void functions and call statements
 - [x] void returns (`return;`)
 - [x] code comments (`// this is a comment`)
+- [ ] visitor pattern codegen

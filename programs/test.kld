@@ -1,3 +1,5 @@
+// EXPECT 2
+
 fn add(x, y) -> i32 {
     return x + y;
 }

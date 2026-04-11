@@ -48,7 +48,7 @@ std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens
             // find closing brace to know where functions declaration ends
             size_t tmp_i = i;
             while (tokens[tmp_i].type != TokenType::BRACE_L) tmp_i++;
-            size_t close_brace_i = find_matching_paren_index(tokens, tmp_i, TokenType::BRACE_L, TokenType::BRACE_R);
+            size_t close_brace_i = find_matching_token_index(tokens, tmp_i, TokenType::BRACE_L, TokenType::BRACE_R);
             auto token_count = close_brace_i - i + 1;
             auto fn_expr = parse_function_def(std::span(tokens).subspan(i, token_count));
             i += token_count;
@@ -56,9 +56,9 @@ std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens
             continue;
         }
         if (token.type == TokenType::EXTERN) {
-            auto semi_colon_i = 0;
+            auto semi_colon_i = i;
             while (semi_colon_i < tokens.size() && tokens.at(semi_colon_i).type != TokenType::SEMICOLON) semi_colon_i++;
-            auto token_slice = std::vector<Token>{tokens.begin() + 1, tokens.begin() + semi_colon_i};
+            auto token_slice = std::vector<Token>{tokens.begin() + i + 1, tokens.begin() + semi_colon_i};
             auto proto_tokens = std::span(token_slice);
             auto proto = Parser::parse_prototype(proto_tokens);
 
@@ -87,7 +87,7 @@ std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> t
     size_t open_brace_i = 0;
     // find the opening and closing brace
     while (tokens[open_brace_i].type != TokenType::BRACE_L) open_brace_i++;
-    size_t close_brace_i =  find_matching_paren_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
+    size_t close_brace_i =  find_matching_token_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
     const auto body_token_count = close_brace_i - open_brace_i -1;
     auto proto_tokens = tokens.subspan(1, open_brace_i - 1);
     // Parses the prototype (identifier + arguments) and
@@ -161,7 +161,7 @@ std::unique_ptr<PrototypeAST> Parser::parse_prototype(std::span<const Token> tok
     // fn foo(...)
     // extern foo(...)
     size_t open_paren_i = 1;
-    auto close_paren_i = Parser::find_matching_paren_index({tokens.begin(), tokens.end()}, open_paren_i, TokenType::BRACKET_L, TokenType::BRACKET_R);
+    auto close_paren_i = Parser::find_matching_token_index({tokens.begin(), tokens.end()}, open_paren_i, TokenType::BRACKET_L, TokenType::BRACKET_R);
     // find return type identifier
     // TODO: will not work for more complex types like -> (i32, i32)
     // TODO: something like `Parser::parse_type_expression(tokens, close_paren_i + 1)`
@@ -193,7 +193,7 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
         //     break;
         // }
         case TokenType::RETURN:
-            statement = parse_return_statemen(tokens);
+            statement = parse_return_statement(tokens);
             break;
         case TokenType::IDENTIFIER: {
             // Call statement like InitWindow();
@@ -202,6 +202,7 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
                 statement = parse_call_statement(tokens);
                 break;
             }
+            // TODO: handle statements like a++, a += 2; a = 3;
         }
         default:
             throw std::runtime_error("Statement not recognized");
@@ -209,12 +210,15 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
     return std::move(statement);
 }
 
-/// Parse return statements
-
-std::unique_ptr<ReturnStatementAST> Parser::parse_return_statemen(std::span<const Token> tokens)
+std::unique_ptr<ReturnStatementAST> Parser::parse_return_statement(std::span<const Token> tokens)
 {
     auto expression_tokens = tokens.subspan(1, tokens.size()-1);
 
+    // empty return (void)
+    if (expression_tokens.empty())
+    {
+        return std::make_unique<ReturnStatementAST>(nullptr);
+    }
     auto return_statement = std::make_unique<ReturnStatementAST>(parse_expression(expression_tokens));
 
     return std::move(return_statement);
@@ -239,7 +243,7 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
     // check paren expressions first - [(, expr, )]
     if (tokens.front().type == TokenType::BRACKET_L)
     {
-        auto close_paren_i = find_matching_paren_index({tokens.begin(), tokens.end()}, 0, TokenType::BRACKET_L, TokenType::BRACKET_R);
+        auto close_paren_i = find_matching_token_index({tokens.begin(), tokens.end()}, 0, TokenType::BRACKET_L, TokenType::BRACKET_R);
         // whole expression is wrapped with ( )
         if (close_paren_i == tokens.size()-1)
         {
@@ -267,7 +271,7 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
     // [identifier, '(', ...] start of a function call
     if ((tokens.front().type == TokenType::IDENTIFIER) && tokens.at(1).type == TokenType::BRACKET_L) {
         // We need to check if we're parsing a single paren expression like `foo(a + b) and not  foo() + foo()
-        size_t end_paren_i = find_matching_paren_index({tokens.begin(), tokens.end()}, 1, TokenType::BRACKET_L, TokenType::BRACKET_R);
+        size_t end_paren_i = find_matching_token_index({tokens.begin(), tokens.end()}, 1, TokenType::BRACKET_L, TokenType::BRACKET_R);
 
         // Whole expression is a function call.
         // otherwise we go out of the if statement and continue trying to identify the expression type
@@ -307,7 +311,7 @@ std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const T
         // we hit a function call or paren expression so we want to go around it
         if (token.type == TokenType::BRACKET_L)
         {
-            operator_i = find_matching_paren_index({tokens.begin(), tokens.end()}, operator_i, TokenType::BRACKET_L, TokenType::BRACKET_R) + 1;
+            operator_i = find_matching_token_index({tokens.begin(), tokens.end()}, operator_i, TokenType::BRACKET_L, TokenType::BRACKET_R) + 1;
             continue;
         }
 
@@ -368,7 +372,7 @@ std::unique_ptr<ExpressionAST> Parser::parse_call_expression(std::span<const Tok
     return std::move(expr);
 }
 
-size_t Parser::find_matching_paren_index(const std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok) {
+size_t Parser::find_matching_token_index(const std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok) {
     auto stack = std::stack<TokenType>();
     stack.push(open_tok);
     size_t i = open_paren_i + 1;
@@ -394,7 +398,7 @@ std::vector<std::vector<Token>> Parser::get_function_arg_tokens(std::vector<Toke
     for (size_t i = arg_start; i < tokens.size(); i++) {
         const auto& tok = tokens.at(i);
         if (tok.type == TokenType::BRACKET_L) {
-            i = Parser::find_matching_paren_index(tokens, i, TokenType::BRACKET_L, TokenType::BRACKET_R);
+            i = Parser::find_matching_token_index(tokens, i, TokenType::BRACKET_L, TokenType::BRACKET_R);
             continue;
         }
 

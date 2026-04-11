@@ -1,3 +1,5 @@
+// EXPECT 42
+
 fn main(){
     return 42;
 }
