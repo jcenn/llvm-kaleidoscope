@@ -137,6 +137,9 @@ llvm::Value * BinaryExpressionAST::codegen() {
         case BinaryOperator::Subtract:
             return Builder->CreateSub(lhs_val, rhs_val);
             break;
+        case BinaryOperator::Multiply:
+            return Builder->CreateMul(lhs_val, rhs_val);
+            break;
     }
 
     throw std::logic_error("Codegen error couldn't parse operator");

@@ -15,7 +15,7 @@ enum class TypeIdentifier {
 enum class BinaryOperator {
     Add,
     Subtract,
-    // Multiply,
+    Multiply,
     // Divide,
     // Modulus,
     // Equals,

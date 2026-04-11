@@ -70,6 +70,9 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             case '-':
                 tokens.emplace_back(TokenType::MINUS);
                 continue;
+            case '*':
+                tokens.emplace_back(TokenType::ASTERISK);
+                continue;
             case '=':
                 tokens.emplace_back(TokenType::EQUALS);
                 continue;

@@ -5,6 +5,11 @@ import glob
 def main():
     compiler_path = "cmake-build-debug/llvm_kaleidoscope"
     
+    # ANSI escape codes for colors
+    COLOR_GREEN = "\033[92m"
+    COLOR_RED = "\033[91m"
+    COLOR_RESET = "\033[0m"
+
     if not os.path.exists(compiler_path):
         print(f"Compiler not found at {compiler_path}. Please build it first.")
         return
@@ -32,12 +37,12 @@ def main():
                 try:
                     expected_exit_code = int(first_line[len("// EXPECT "):].strip())
                 except ValueError:
-                    print(f"  [WARNING] Invalid EXPECT format in {kld_file}")
+                    print(f"  {COLOR_RED}[WARNING]{COLOR_RESET} Invalid EXPECT format in {kld_file}")
         
         # Run the compiler
         compile_result = subprocess.run([compiler_path, base_path], capture_output=True, text=True)
         if compile_result.returncode != 0:
-            print(f"  [FAILED] Compilation failed for {kld_file}")
+            print(f"  {COLOR_RED}[FAILED]{COLOR_RESET} Compilation failed for {kld_file}")
             print(f"  Stderr: {compile_result.stderr.strip()}")
             failed_count += 1
             continue
@@ -52,17 +57,17 @@ def main():
             
         if expected_exit_code is not None:
             if actual_code == expected_exit_code:
-                print(f"  [PASSED] Returned {actual_code} (Expected {expected_exit_code})")
+                print(f"  {COLOR_GREEN}[PASSED]{COLOR_RESET} Returned {actual_code} (Expected {expected_exit_code})")
                 passed_count += 1
             else:
-                print(f"  [FAILED] Returned {actual_code} (Expected {expected_exit_code})")
+                print(f"  {COLOR_RED}[FAILED]{COLOR_RESET} Returned {actual_code} (Expected {expected_exit_code})")
                 failed_count += 1
         else:
             if actual_code != -1:
-                print(f"  [PASSED] Returned {actual_code}")
+                print(f"  {COLOR_GREEN}[PASSED]{COLOR_RESET} Returned {actual_code}")
                 passed_count += 1
             else:
-                print(f"  [FAILED] Returned {actual_code} (Expected != -1)")
+                print(f"  {COLOR_RED}[FAILED]{COLOR_RESET} Returned {actual_code} (Expected != -1)")
                 failed_count += 1
 
     print("\n--- Summary ---")

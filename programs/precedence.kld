@@ -1,0 +1,5 @@
+// EXPECT 11
+
+fn main() {
+    return 2 + 3 * 3;
+}

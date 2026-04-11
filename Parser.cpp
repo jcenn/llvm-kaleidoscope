@@ -75,7 +75,7 @@ std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens
 }
 
 
-// Parsing function *definitions*
+// Parsing function definitions => signature + body
 std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> tokens) {
     // find closing brace -> last token
     // create AST Node
@@ -291,6 +291,12 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
     throw std::runtime_error("Tried to parse an invalid expression");
 }
 
+std::map<BinaryOperator, int> bin_op_precedence{
+    {BinaryOperator::Add, 1},
+    {BinaryOperator::Subtract, 1},
+    {BinaryOperator::Multiply, 10}
+};
+
 std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const Token> tokens)
 {
     // NOTE: We should actually start splitting sub-expressions from right to left
@@ -304,7 +310,11 @@ std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const T
     // look for a binary expression operator (+, -, /, etc.)
     bool binary_exp = false;
     size_t operator_i{};
-    size_t last_found_operator_i{};
+    size_t found_operator_i{};
+
+    // We split by lowest precedence so that the higher precedence operations stay together
+    // like 2 + 3 * 3 => (2) + (3 * 3)
+    int lowest_precedence = INT_MAX;
     while (operator_i < tokens.size()) {
         const auto& token = tokens.at(operator_i);
 
@@ -316,15 +326,21 @@ std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const T
         }
 
         if (binary_operators.contains(token.type)) {
-            last_found_operator_i = operator_i;
+            auto op = binary_operators.at(token.type);
+            auto op_precedence = bin_op_precedence.at(op);
+            if (op_precedence < lowest_precedence)
+            {
+                found_operator_i = operator_i;
+                lowest_precedence = op_precedence;
+            }
             binary_exp = true;
         }
         operator_i++;
     }
     if (binary_exp) {
-        auto lhs_tokens = tokens.subspan(0, last_found_operator_i);
-        auto rhs_tokens = tokens.subspan(last_found_operator_i + 1, tokens.size() - (last_found_operator_i + 1));
-        BinaryOperator bin_operator = binary_operators.at(tokens.at(last_found_operator_i).type);
+        auto lhs_tokens = tokens.subspan(0, found_operator_i);
+        auto rhs_tokens = tokens.subspan(found_operator_i + 1, tokens.size() - (found_operator_i + 1));
+        BinaryOperator bin_operator = binary_operators.at(tokens.at(found_operator_i).type);
         auto expr = std::make_unique<BinaryExpressionAST>(
             bin_operator,
             parse_expression(lhs_tokens),
