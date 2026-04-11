@@ -25,23 +25,23 @@ extern std::map<std::string, llvm::Value *> NamedValues;
 
 class AST_Node {
 protected:
-    std::vector<Token> tokens;
+    //const std::vector<Token> tokens;
 
 public:
     virtual ~AST_Node() noexcept = default;
 
-    explicit AST_Node(const std::vector<Token> &tokens) : tokens(tokens) { }
+    explicit AST_Node() { }
     /// Consumes some of its tokens and passes them forward to new child AST nodes
-    virtual void resolve() = 0;
+    // virtual void resolve() = 0;
 };
 
 /// Top level class for translation units
 class ModuleAST : public AST_Node {
 public:
     std::vector<std::unique_ptr<AST_Node>> declarations;
-    explicit ModuleAST(const std::vector<Token>& tokens) : AST_Node(tokens) { }
+    explicit ModuleAST(const std::vector<Token>& tokens) : AST_Node() { }
     ~ModuleAST() noexcept override = default;
-    void resolve() override;
+    // void resolve() override;
     void codegen();
 };
 
@@ -52,22 +52,22 @@ public:
     TypeIdentifier ret_type = TypeIdentifier::VOID;
     std::string identifier;
     std::vector<std::pair<std::string, TypeIdentifier>> args{};
-    PrototypeAST(const std::string& identifier, std::vector<std::pair<std::string, TypeIdentifier>> args, TypeIdentifier return_type) : AST_Node({}) {
+    PrototypeAST(const std::string& identifier, std::vector<std::pair<std::string, TypeIdentifier>> args, TypeIdentifier return_type) : AST_Node() {
         this->identifier = identifier;
         this->args = std::move(args);
         this->ret_type = return_type;
     };
     ~PrototypeAST() noexcept override = default;
-    void resolve() override {};
+    // void resolve() override {};
     llvm::Function* codegen();
 };
 
 // assignment operations, if statements, return statements
 class StatementAST : public AST_Node {
 public:
-    explicit StatementAST(const std::vector<Token>& tokens) : AST_Node(tokens) { };
+    explicit StatementAST(const std::vector<Token>& tokens) : AST_Node() { };
     ~StatementAST() noexcept override = default;
-    void resolve() override = 0;
+    // void resolve() override = 0;
     virtual llvm::Value* codegen() = 0;
 };
 
@@ -77,20 +77,20 @@ public:
     std::vector<std::unique_ptr<StatementAST>> statements;
     std::unique_ptr<PrototypeAST> prototype;
 
-    FunctionAST(const std::vector<Token>& tokens, std::unique_ptr<PrototypeAST> proto) : AST_Node(tokens) {
-        prototype = std::move(proto);
+    FunctionAST(std::vector<std::unique_ptr<StatementAST>>&& statements, std::unique_ptr<PrototypeAST> proto) : AST_Node() {
+        this->prototype = std::move(proto);
+        this->statements = std::move(statements);
     };
     ~FunctionAST() noexcept override = default;
-    void resolve() override;
     llvm::Value* codegen();
 };
 
 // Abstract class that acts as a common parent for other Expression types
 class ExpressionAST : public AST_Node {
 public:
-    explicit ExpressionAST(const std::vector<Token>& tokens) : AST_Node(tokens) { }
+    explicit ExpressionAST() : AST_Node() { }
     ~ExpressionAST() override = default;
-    void resolve() override = 0;
+    // void resolve() override = 0;
     virtual llvm::Value* codegen() = 0;
 };
 
@@ -99,9 +99,18 @@ public:
     BinaryOperator operator_;
     std::unique_ptr<ExpressionAST> lhs;
     std::unique_ptr<ExpressionAST> rhs;
-    explicit BinaryExpressionAST(const std::vector<Token>& tokens) : ExpressionAST(tokens) { }
+    explicit BinaryExpressionAST(
+        BinaryOperator operator_,
+        std::unique_ptr<ExpressionAST>&& lhs,
+        std::unique_ptr<ExpressionAST>&& rhs
+    ) : operator_(operator_)
+    {
+        this->lhs = std::move(lhs);
+        this->rhs = std::move(rhs);
+    }
+
     ~BinaryExpressionAST() override = default;
-    void resolve() override;
+    // void resolve() override;
 
     llvm::Value * codegen() override;
 };
@@ -110,10 +119,10 @@ public:
 class VariableExpressionAST : public ExpressionAST {
 public:
     std::string identifier;
-    explicit VariableExpressionAST(const std::vector<Token> &tokens) : ExpressionAST(tokens) { }
+    explicit VariableExpressionAST(const Token& tok) : ExpressionAST(), identifier(tok.value.value()) { }
     ~VariableExpressionAST() override = default;
 
-    void resolve() override;
+    // void resolve() override;
     
     llvm::Value* codegen() override;
 };
@@ -122,10 +131,10 @@ public:
 class LiteralExpressionAST : public ExpressionAST {
 public:
     std::string value_str;
-    explicit LiteralExpressionAST(const std::vector<Token> &tokens) : ExpressionAST(tokens) { }
+    explicit LiteralExpressionAST(const Token& tok) : ExpressionAST(), value_str(tok.value.value()) { }
     ~LiteralExpressionAST() override = default;
 
-    void resolve() override;
+    // void resolve() override;
     llvm::Value* codegen() override;
 };
 
@@ -134,10 +143,10 @@ class CallExpressionAST : public ExpressionAST {
 public:
     std::string calee_identifier;
     std::vector<std::unique_ptr<ExpressionAST>> arg_expressions{};
-    explicit CallExpressionAST(const std::vector<Token> &tokens) : ExpressionAST(tokens) { }
+    explicit CallExpressionAST() : ExpressionAST() { }
     ~CallExpressionAST() override = default;
 
-    void resolve() override;
+    // void resolve() override;
     llvm::Value* codegen() override;
 };
 
@@ -148,7 +157,7 @@ public:
     std::unique_ptr<ExpressionAST> expression;
 
     explicit LetStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
-    void resolve() override;
+    // void resolve() override;
 
     llvm::Value* codegen() override;
 };
@@ -159,7 +168,7 @@ public:
     std::unique_ptr<ExpressionAST> call_expression;
 
     explicit CallStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
-    void resolve() override;
+    // void resolve() override;
 
     llvm::Value* codegen() override;
 };
@@ -168,8 +177,11 @@ class ReturnStatementAST : public StatementAST {
 public:
     std::unique_ptr<ExpressionAST> expression = nullptr;
 
-    explicit ReturnStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
-    void resolve() override;
+    explicit ReturnStatementAST(std::unique_ptr<ExpressionAST>&& expression) : StatementAST({})
+    {
+        this->expression = std::move(expression);
+    };
+    // void resolve() override;
 
     llvm::Value* codegen() override;
 };

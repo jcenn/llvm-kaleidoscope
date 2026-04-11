@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
     }
     // Running without arguments
     if (argc == 1) {
-        file_path = "programs/fn_calls";
+        file_path = "programs/main";
     }else {
         file_path = argv[1];
     }

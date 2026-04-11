@@ -17,7 +17,7 @@ namespace Parser {
 
     bool is_binary_operator(const Token& tok);
 
-    size_t find_matching_paren_index(std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok);
+    size_t find_matching_paren_index(const std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok);
 
     // Splits list of tokens inside function parentheses and returns a vector where vec[n] corresponds to tokens for n-th argument
     // Must only tokens between function's ( and ) tokens
@@ -28,11 +28,17 @@ namespace Parser {
         {"i32", TypeIdentifier::I32},
     };
     std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
-    std::unique_ptr<StatementAST> parse_statement(const std::vector<Token>& tokens);
 
-    std::vector<std::pair<std::string, TypeIdentifier>> parse_function_parameters(const std::vector<Token> &tokens);
+    std::unique_ptr<FunctionAST> parse_function_def(std::span<const Token> tokens);
+    std::unique_ptr<PrototypeAST> parse_prototype(std::span<const Token> &tokens);
+    std::vector<std::pair<std::string, TypeIdentifier>> parse_function_parameters(std::span<const Token> &tokens);
+    std::vector<std::unique_ptr<StatementAST>> parse_function_body(std::span<const Token> &tokens);
 
-    std::unique_ptr<PrototypeAST> parse_prototype(std::vector<Token> &tokens);
+    std::unique_ptr<StatementAST> parse_statement(std::span<const Token> tokens, bool top_level = false);
+    std::unique_ptr<ReturnStatementAST> parse_return_statemen(std::span<const Token> &tokens);
+
+    std::unique_ptr<ExpressionAST> parse_expression(std::span<const Token> &tokens);
+    std::unique_ptr<ExpressionAST> parse_binary_expression(std::span<const Token> &tokens);
 }
 
 
