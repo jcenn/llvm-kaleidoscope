@@ -65,7 +65,7 @@ public:
 // assignment operations, if statements, return statements
 class StatementAST : public AST_Node {
 public:
-    explicit StatementAST(const std::vector<Token>& tokens) : AST_Node() { };
+    explicit StatementAST() : AST_Node() { };
     ~StatementAST() noexcept override = default;
     // void resolve() override = 0;
     virtual llvm::Value* codegen() = 0;
@@ -141,12 +141,13 @@ public:
 // Leaf node for literals inside expressions
 class CallExpressionAST : public ExpressionAST {
 public:
-    std::string calee_identifier;
+    std::string callee_identifier;
     std::vector<std::unique_ptr<ExpressionAST>> arg_expressions{};
-    explicit CallExpressionAST() : ExpressionAST() { }
+    explicit CallExpressionAST(const std::string& callee, std::vector<std::unique_ptr<ExpressionAST>> expressions) : callee_identifier(callee)
+    {
+        this->arg_expressions = std::move(expressions);
+    }
     ~CallExpressionAST() override = default;
-
-    // void resolve() override;
     llvm::Value* codegen() override;
 };
 
@@ -156,7 +157,7 @@ public:
     std::string LHS_identifier;
     std::unique_ptr<ExpressionAST> expression;
 
-    explicit LetStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
+    explicit LetStatementAST(const std::vector<Token>& tokens) : StatementAST() { };
     // void resolve() override;
 
     llvm::Value* codegen() override;
@@ -167,9 +168,10 @@ class CallStatementAST : public StatementAST {
 public:
     std::unique_ptr<ExpressionAST> call_expression;
 
-    explicit CallStatementAST(const std::vector<Token>& tokens) : StatementAST(tokens) { };
-    // void resolve() override;
-
+    explicit CallStatementAST(std::unique_ptr<ExpressionAST>&& expression)
+    {
+        this->call_expression = std::move(expression);
+    };
     llvm::Value* codegen() override;
 };
 
@@ -177,7 +179,7 @@ class ReturnStatementAST : public StatementAST {
 public:
     std::unique_ptr<ExpressionAST> expression = nullptr;
 
-    explicit ReturnStatementAST(std::unique_ptr<ExpressionAST>&& expression) : StatementAST({})
+    explicit ReturnStatementAST(std::unique_ptr<ExpressionAST>&& expression)
     {
         this->expression = std::move(expression);
     };

@@ -282,12 +282,6 @@ llvm::Value * BinaryExpressionAST::codegen() {
     return nullptr;
 }
 
-
-// void VariableExpressionAST::resolve() {
-//     if (this->tokens.size() != 1) throw std::logic_error("Created variable expression with multiple tokens");
-//     this->identifier = tokens.front().value.value();
-// }
-
 llvm::Value * VariableExpressionAST::codegen() {
     llvm::Value* v = NamedValues[identifier];
 
@@ -295,11 +289,6 @@ llvm::Value * VariableExpressionAST::codegen() {
 
     return v;
 }
-
-// void LiteralExpressionAST::resolve() {
-//     if (this->tokens.size() != 1) throw std::logic_error("Created literal expression with multiple tokens");
-//     this->value_str = tokens.front().value.value();
-// }
 
 llvm::Value * LiteralExpressionAST::codegen() {
     int num = 0;
@@ -346,20 +335,20 @@ llvm::Value * LiteralExpressionAST::codegen() {
 // }
 
 llvm::Value * CallExpressionAST::codegen() {
-    llvm::Function* function = TheModule->getFunction(this->calee_identifier);
+    llvm::Function* function = TheModule->getFunction(this->callee_identifier);
     if (!function) {
-        throw std::runtime_error("Tried to call a non-existent function " + this->calee_identifier);
+        throw std::runtime_error("Tried to call a non-existent function " + this->callee_identifier);
     }
 
     if (function->arg_size() != this->arg_expressions.size()) {
-        throw std::runtime_error("Mismatch in argument count for function " + this->calee_identifier + "\n expected " + std::to_string(function->arg_size()) + " arguments, " + "got " + std::to_string(this->arg_expressions.size()) + ".");
+        throw std::runtime_error("Mismatch in argument count for function " + this->callee_identifier + "\n expected " + std::to_string(function->arg_size()) + " arguments, " + "got " + std::to_string(this->arg_expressions.size()) + ".");
     }
 
     std::vector<llvm::Value*> arg_values{};
     for (auto& arg : this->arg_expressions) {
         auto val = arg->codegen();
         if (!val) {
-            throw std::runtime_error("Codegen error couldn't parse argument value when calling " + this->calee_identifier);
+            throw std::runtime_error("Codegen error couldn't parse argument value when calling " + this->callee_identifier);
         }
         arg_values.push_back(val);
     }

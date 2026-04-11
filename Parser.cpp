@@ -36,6 +36,13 @@ std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens
     size_t i{};
     while (i < tokens.size()) {
         const auto& token = tokens[i];
+
+        if (token.type == TokenType::SEMICOLON)
+        {
+            i++;
+            continue;
+        }
+
         // check the received token, parse its expression and increment the index to point at the next statement's opening token
         if (token.type == TokenType::FN) {
             // find closing brace to know where functions declaration ends
@@ -48,17 +55,21 @@ std::unique_ptr<ModuleAST> Parser::parse_tokens(const std::vector<Token> &tokens
             moduleNode->declarations.push_back(std::move(fn_expr));
             continue;
         }
-        // if (token.type == TokenType::EXTERN) {
-        //     auto semi_colon_i = 0;
-        //     while (semi_colon_i < tokens.size() && tokens[semi_colon_i].type != TokenType::SEMICOLON) semi_colon_i++;
-        //     auto proto_tokens = tokens.subspan(1, semi_colon_i - 1);
-        //     auto proto = Parser::parse_prototype(proto_tokens);
+        if (token.type == TokenType::EXTERN) {
+            auto semi_colon_i = 0;
+            while (semi_colon_i < tokens.size() && tokens.at(semi_colon_i).type != TokenType::SEMICOLON) semi_colon_i++;
+            auto token_slice = std::vector<Token>{tokens.begin() + 1, tokens.begin() + semi_colon_i};
+            auto proto_tokens = std::span(token_slice);
+            auto proto = Parser::parse_prototype(proto_tokens);
 
-        //     // std::cout << "Found external function " << proto->identifier << std::endl;
-        //     moduleNode->declarations.push_back(std::move(proto));
-        //     i += proto->tok_count();
-        //     continue;
-        // }
+            // std::cout << "Found external function " << proto->identifier << std::endl;
+            i += proto_tokens.size() + 1;
+            moduleNode->declarations.push_back(std::move(proto));
+            continue;
+        }
+
+
+        throw std::runtime_error("parsing error for module: found token " + token_to_string(token));
     }
     return moduleNode;
 }
@@ -96,10 +107,6 @@ std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> t
     return std::move(functionAST);
 }
 
-
-
-
-
 // expects tokens to only contain the content between function parentheses ex. for `foo(a, b) tokens = [a, ',', b]
 std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_parameters(std::span<const Token> tokens) {
     // Parse function arguments
@@ -125,7 +132,7 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
     size_t statement_start = 0;
     size_t token_count = 0;
     while (statement_start + token_count < tokens.size()) {
-        auto const& tok = tokens.at(token_count);
+        auto const& tok = tokens.at(statement_start + token_count);
         if (tok.type != TokenType::SEMICOLON) {
             token_count++;
             continue;
@@ -135,8 +142,8 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
 
         statements.push_back(parse_statement(statement_tokens));
         if (statement_start + token_count >= tokens.size()) break;
-        statement_start = token_count + 1; // first token of the next statement
-        token_count = 0;
+        statement_start += token_count + 1; // skip ; and point at the first token of the next statement
+        token_count = 1;
     }
     return statements;
 }
@@ -185,15 +192,17 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
         //     statement = std::make_unique<LetStatementAST>(tokens);
         //     break;
         // }
-        case TokenType::RETURN: {
-                statement = parse_return_statemen(tokens);
-                break;
-        }
+        case TokenType::RETURN:
+            statement = parse_return_statemen(tokens);
+            break;
+        case TokenType::IDENTIFIER: {
             // Call statement like InitWindow();
-        // case TokenType::IDENTIFIER: {
-        //         statement = std::make_unique<CallStatementAST>(statement_tokens);
-        //         break;
-        // }
+            if (tokens.at(1).type == TokenType::BRACKET_L)
+            {
+                statement = parse_call_statement(tokens);
+                break;
+            }
+        }
         default:
             throw std::runtime_error("Statement not recognized");
     }
@@ -207,14 +216,27 @@ std::unique_ptr<ReturnStatementAST> Parser::parse_return_statemen(std::span<cons
     auto expression_tokens = tokens.subspan(1, tokens.size()-1);
 
     auto return_statement = std::make_unique<ReturnStatementAST>(parse_expression(expression_tokens));
+
     return std::move(return_statement);
+}
+
+std::unique_ptr<CallStatementAST> Parser::parse_call_statement(std::span<const Token> tokens)
+{
+    auto expression_tokens = tokens.subspan(0, tokens.size());
+    auto expr = parse_expression(expression_tokens);
+    if (!dynamic_cast<CallExpressionAST*>(expr.get()))
+    {
+        throw std::logic_error("Call Expression expected");
+    }
+    auto statement = std::make_unique<CallStatementAST>(std::move(expr));
+    return std::move(statement);
 }
 
 std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)
 {
     std::unique_ptr<ExpressionAST> expression{};
 
-    // TODO: paren expressions - first token (, last token )
+    // check paren expressions first - [(, expr, )]
     if (tokens.front().type == TokenType::BRACKET_L)
     {
         auto close_paren_i = find_matching_paren_index({tokens.begin(), tokens.end()}, 0, TokenType::BRACKET_L, TokenType::BRACKET_R);
@@ -250,10 +272,8 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
         // Whole expression is a function call.
         // otherwise we go out of the if statement and continue trying to identify the expression type
         if (end_paren_i == tokens.size()-1) {
-            //TODO: implement call expressions
-            //auto expr = std::make_unique<CallExpressionAST>(tokens);
-            // expr->resolve();
-            return nullptr;
+            auto expr = parse_call_expression(tokens.subspan(0, tokens.size()));
+            return std::move(expr);
         }
     }
 
@@ -309,6 +329,43 @@ std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const T
         return expr;
     }
     return nullptr;
+}
+
+std::unique_ptr<ExpressionAST> Parser::parse_call_expression(std::span<const Token> tokens)
+{
+    // expects tokens like [ foo(bar, baz) ]
+    if (tokens.size() < 3) {
+        throw std::logic_error("Tried to create a call expression with less than 3 tokens");
+    }
+    if (tokens.front().type != TokenType::IDENTIFIER) {
+        throw std::logic_error("Tried to create a call expression with no identifier");
+    }
+
+    std::unique_ptr<CallExpressionAST> expr;
+
+    auto callee_identifier = tokens.front().value.value();
+    auto arg_expressions = std::vector<std::unique_ptr<ExpressionAST>>{};
+    // Function with no arguments ex. foo();
+    if (tokens.size() == 3) {
+        expr = std::make_unique<CallExpressionAST>(callee_identifier, std::vector<std::unique_ptr<ExpressionAST>>{});
+        return std::move(expr);
+    }
+
+    size_t arg_start = 2;
+    size_t i = arg_start;
+
+    // iterate over tokens until we hit closing parentheses and pass any found arguments to an expression AST node
+    // TODO: could cause problems when passing other function calls ex. foo(1, bar(2, 3)) as it could consider the , inside bar to be a terminator
+    // omit function identifier, open paren and close paren
+    auto arg_source_tokens = std::vector<Token>(tokens.begin() + 2, tokens.end() - 1);
+    auto arg_tokens = Parser::get_function_arg_tokens(arg_source_tokens);
+
+    for (auto& toks : arg_tokens) {
+        auto expression = parse_expression(toks);
+        arg_expressions.push_back(std::move(expression));
+    }
+    expr = std::make_unique<CallExpressionAST>(callee_identifier, std::move(arg_expressions));
+    return std::move(expr);
 }
 
 size_t Parser::find_matching_paren_index(const std::vector<Token> &tokens, size_t open_paren_i, TokenType open_tok, TokenType close_tok) {
