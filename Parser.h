@@ -37,6 +37,7 @@ namespace Parser {
     std::unique_ptr<StatementAST> parse_statement(std::span<const Token> tokens, bool top_level = false);
     std::unique_ptr<ReturnStatementAST> parse_return_statement(std::span<const Token> tokens);
     std::unique_ptr<CallStatementAST> parse_call_statement(std::span<const Token> tokens);
+    std::unique_ptr<IfStatementAST> parse_if_statement(std::span<const Token> tokens);
 
     std::unique_ptr<ExpressionAST> parse_expression(std::span<const Token> tokens);
     std::unique_ptr<ExpressionAST> parse_binary_expression(std::span<const Token> tokens);

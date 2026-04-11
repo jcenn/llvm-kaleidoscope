@@ -188,4 +188,25 @@ public:
     llvm::Value* codegen() override;
 };
 
+
+class IfStatementAST : public StatementAST {
+public:
+    std::unique_ptr<ExpressionAST> condition_expression = nullptr;
+    std::vector<std::unique_ptr<StatementAST>> then_statements{};
+    std::vector<std::unique_ptr<StatementAST>> else_statements{};
+
+    explicit IfStatementAST(std::unique_ptr<ExpressionAST>&& condition_expr, std::vector<std::unique_ptr<StatementAST>> then)
+    {
+        this->condition_expression = std::move(condition_expr);
+        this->then_statements = std::move(then);
+    };
+    explicit IfStatementAST(std::unique_ptr<ExpressionAST>&& condition_expr, std::vector<std::unique_ptr<StatementAST>> then, std::vector<std::unique_ptr<StatementAST>> else_stm)
+    {
+        this->condition_expression = std::move(condition_expr);
+        this->then_statements = std::move(then);
+        this->else_statements = std::move(else_stm);
+    };
+    llvm::Value* codegen() override;
+};
+
 #endif //LLVM_KALEIDOSCOPE_AST_H

@@ -89,7 +89,7 @@ std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> t
     while (tokens[open_brace_i].type != TokenType::BRACE_L) open_brace_i++;
     size_t close_brace_i =  find_matching_token_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
     const auto body_token_count = close_brace_i - open_brace_i -1;
-    auto proto_tokens = tokens.subspan(1, open_brace_i - 1);
+    auto proto_tokens = std::span(tokens.begin() + 1, tokens.begin() + open_brace_i);
     // Parses the prototype (identifier + arguments) and
     auto prototype = Parser::parse_prototype( proto_tokens );
 
@@ -133,6 +133,26 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
     size_t token_count = 0;
     while (statement_start + token_count < tokens.size()) {
         auto const& tok = tokens.at(statement_start + token_count);
+        if (tok.type == TokenType::IF)
+        {
+            statement_start = statement_start + token_count;
+            token_count = 0;
+            size_t i = statement_start;
+            while (tokens.at(i).type != TokenType::BRACE_L) i++;
+
+            auto if_close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, i, TokenType::BRACE_L, TokenType::BRACE_R);
+            if (tokens.at(if_close_brace_i+1).type == TokenType::ELSE)
+            {
+                i = if_close_brace_i + 2;
+                if_close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, i, TokenType::BRACE_L, TokenType::BRACE_R);
+            }
+            auto if_else_tokens = std::vector<Token>{tokens.begin() + statement_start, tokens.begin() + if_close_brace_i + 1};
+            statements.push_back(parse_statement(std::span<const Token>(if_else_tokens)));
+            statement_start += if_else_tokens.size();
+            token_count = 0;
+            continue;
+        }
+
         if (tok.type != TokenType::SEMICOLON) {
             token_count++;
             continue;
@@ -204,6 +224,10 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
             }
             // TODO: handle statements like a++, a += 2; a = 3;
         }
+        case TokenType::IF: {
+            statement = parse_if_statement(tokens);
+            break;
+        }
         default:
             throw std::runtime_error("Statement not recognized");
     }
@@ -234,6 +258,73 @@ std::unique_ptr<CallStatementAST> Parser::parse_call_statement(std::span<const T
     }
     auto statement = std::make_unique<CallStatementAST>(std::move(expr));
     return std::move(statement);
+}
+
+// if <condition expression> {
+//      statements...
+// }
+// (optional) else {
+//      statements...
+// }
+std::unique_ptr<IfStatementAST> Parser::parse_if_statement(std::span<const Token> tokens)
+{
+    if (tokens.empty() || tokens.front().type != TokenType::IF)
+    {
+        throw std::logic_error("If Statement expected received");
+    }
+
+    size_t open_brace_i = 0;
+    while (tokens.at(open_brace_i).type != TokenType::BRACE_L) open_brace_i++;
+
+    auto close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
+
+    auto condition_expr = parse_expression(std::span<const Token>({tokens.begin() + 1, tokens.begin() + open_brace_i}));
+    auto statements = std::vector<std::unique_ptr<StatementAST>>{};
+    int i = open_brace_i + 1;
+    int statement_start_i = i;
+    while (i < close_brace_i)
+    {
+        if (tokens.at(i).type == TokenType::SEMICOLON)
+        {
+            statements.push_back(std::move(parse_statement(std::span<const Token>({tokens.begin() + statement_start_i, tokens.begin() + i}))));
+            i += 1;
+            statement_start_i = i;
+            continue;
+        }
+        i++;
+    }
+    // no more tokens to check ( else statement not present )
+    if (close_brace_i >= tokens.size()-1)
+    {
+        return std::make_unique<IfStatementAST>(std::move(condition_expr), std::move(statements));
+    }
+
+    // more tokens to check ( else statement )
+    if (tokens.at(close_brace_i + 1).type != TokenType::ELSE)
+    {
+        throw std::logic_error("Else statement expected");
+    }
+
+    open_brace_i = close_brace_i + 2;
+    close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
+
+
+    auto else_statements = std::vector<std::unique_ptr<StatementAST>>{};
+    i = open_brace_i + 1;
+    statement_start_i = i;
+    while (i < close_brace_i)
+    {
+        if (tokens.at(i).type == TokenType::SEMICOLON)
+        {
+            else_statements.push_back(std::move(parse_statement(std::span<const Token>({tokens.begin() + statement_start_i, tokens.begin() + i}))));
+            i += 1;
+            statement_start_i = i;
+            continue;
+        }
+        i++;
+    }
+
+    return std::make_unique<IfStatementAST>(std::move(condition_expr), std::move(statements), std::move(else_statements));
 }
 
 std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)

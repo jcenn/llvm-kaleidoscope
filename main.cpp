@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
     }
     // Running without arguments
     if (argc == 1) {
-        file_path = "programs/precedence";
+        file_path = "programs/if_else";
     }else {
         file_path = argv[1];
     }

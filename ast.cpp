@@ -93,6 +93,7 @@ llvm::Value * CallStatementAST::codegen() {
 }
 
 llvm::Value * LetStatementAST::codegen() {
+
     return nullptr;
 }
 
@@ -106,6 +107,70 @@ llvm::Value * ReturnStatementAST::codegen() {
         return Builder->CreateRetVoid();
         return nullptr;
     }
+}
+
+llvm::Value* IfStatementAST::codegen()
+{
+    llvm::Value* cond_val = this->condition_expression->codegen();
+    if (!cond_val)
+    {
+        throw std::logic_error("Condition expression is null");
+    }
+
+    llvm::Function* fn = Builder->GetInsertBlock()->getParent();
+    // // Create blocks for then, else and resolution
+    cond_val = Builder->CreateICmpEQ(cond_val, llvm::ConstantInt::get(*Context, llvm::APInt(32, 0)), "ifcond");
+
+    // Create blocks and set up conditional jumps
+    llvm::BasicBlock* then_block = llvm::BasicBlock::Create(*Context, "then", fn);
+    llvm::BasicBlock* else_block = nullptr;
+    llvm::BasicBlock* merge_block = llvm::BasicBlock::Create(*Context, "merge");
+    if (this->else_statements.empty())
+    {
+        // no else statement, jump straight to the final block
+        Builder->CreateCondBr(cond_val, then_block, merge_block);
+    }else
+    {
+        else_block = llvm::BasicBlock::Create(*Context, "else");
+        Builder->CreateCondBr(cond_val, then_block, else_block);
+
+    }
+
+    // Generate 'Then' block
+    Builder->SetInsertPoint(then_block);
+    for (auto& statement : this->then_statements)
+    {
+        statement->codegen();
+    }
+
+    // if block wasn't terminated with a `return` we jump to the final block
+    if (!then_block->getTerminator())
+    {
+        Builder->CreateBr(merge_block);
+    }
+
+    // If there's an else statement we generate the IR for it
+    if (!else_statements.empty())
+    {
+        fn->insert(fn->end(), else_block);
+        Builder->SetInsertPoint(else_block);
+
+        for (auto& statement : this->else_statements)
+        {
+            statement->codegen();
+        }
+
+        // if block wasn't terminated with a `return` we jump to the final block
+        if (!else_block->getTerminator())
+        {
+            Builder->CreateBr(merge_block);
+        }
+
+    }
+
+    fn->insert(fn->end(), merge_block);
+    Builder->SetInsertPoint(merge_block);
+    return nullptr;
 }
 
 void ModuleAST::codegen() {

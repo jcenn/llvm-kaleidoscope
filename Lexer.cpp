@@ -6,7 +6,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <sstream>
 #include <unordered_map>
 
@@ -52,6 +51,19 @@ std::vector<Token> Lexer::parse(const std::string& input) {
         if (source[index] == '-' && source[index + 1] == '>') {
             tokens.emplace_back(TokenType::ARROW);
             index += 2;
+            continue;
+        }
+
+        // "if" followed by a space or (
+        if (source.substr(index, 2) == "if" && source[index + 2] == ' ' ){
+            tokens.emplace_back(TokenType::IF);
+            index += 2;
+            continue;
+        }
+
+        if (source.substr(index, 4) == "else" && (source[index + 4] == ' ' || source[index + 4] == '{')) {
+            tokens.emplace_back(TokenType::ELSE);
+            index += 4;
             continue;
         }
 
