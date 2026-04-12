@@ -34,6 +34,9 @@
           pkgs.libffi
           pkgs.ncurses
         ];        
+        packages = [
+            pkgs.cloc
+        ];
         shellHook = ''
             export LLVM_DIR=${pkgs.llvm_18.dev}/lib/cmake/llvm
              export CPATH="${pkgs.llvm_18.dev}/include:$CPATH"
