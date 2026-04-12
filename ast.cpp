@@ -118,6 +118,37 @@ llvm::Value * LetStatementAST::codegen() {
     return nullptr;
 }
 
+llvm::Value* ForStatementAST::codegen()
+{
+    auto fn = Builder->GetInsertBlock()->getParent();
+
+    auto header_block = llvm::BasicBlock::Create(*Context, "for_header", fn);
+    auto loop_block = llvm::BasicBlock::Create(*Context, "loop");
+    auto after_block = llvm::BasicBlock::Create(*Context, "after");
+
+    // jump from original block to the start of our for loop
+    Builder->CreateBr(header_block);
+    Builder->SetInsertPoint(header_block);
+
+    auto condition = this->cond_expression->codegen();
+    Builder->CreateCondBr(condition, loop_block, after_block);
+
+    fn->insert(fn->end(), loop_block);
+    Builder->SetInsertPoint(loop_block);
+    // TODO: handle termination inside loop block
+    for (auto& statement : this->statements)
+    {
+        statement->codegen();
+    }
+
+    Builder->CreateBr(header_block);
+
+    fn->insert(fn->end(), after_block);
+    Builder->SetInsertPoint(after_block);
+
+    return nullptr;
+}
+
 
 llvm::Value * ReturnStatementAST::codegen() {
     if (this->expression != nullptr) {

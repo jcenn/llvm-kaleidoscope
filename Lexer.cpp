@@ -24,6 +24,7 @@ std::vector<Token> Lexer::parse(const std::string& input) {
     keyword_map["let "] = TokenType::LET;
     keyword_map["return "] = TokenType::RETURN;
     keyword_map["extern "] = TokenType::EXTERN;
+    keyword_map["for "] = TokenType::FOR;
 
     this->source = input;
     this->index = 0;

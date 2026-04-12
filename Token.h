@@ -14,7 +14,7 @@
 
 enum class TokenType {
     // --- KEYWORDS ---
-    FN, LET, RETURN, EXTERN, IF, ELSE,
+    FN, LET, RETURN, EXTERN, IF, ELSE, FOR,
 
     // SYMBOLS
     COLON, SEMICOLON, COMMA,

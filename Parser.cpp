@@ -133,6 +133,8 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
     size_t token_count = 0;
     while (statement_start + token_count < tokens.size()) {
         auto const& tok = tokens.at(statement_start + token_count);
+
+        // Handle if/else statements
         if (tok.type == TokenType::IF)
         {
             statement_start = statement_start + token_count;
@@ -153,6 +155,26 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
             continue;
         }
 
+        // handle for statements
+        if (tok.type == TokenType::FOR)
+        {
+            statement_start = statement_start + token_count;
+            token_count = 0;
+            size_t i = statement_start;
+            while (tokens.at(i).type != TokenType::BRACE_L) i++;
+
+            auto for_close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, i, TokenType::BRACE_L, TokenType::BRACE_R);
+            if (tokens.at(for_close_brace_i+1).type == TokenType::ELSE)
+            {
+                i = for_close_brace_i + 2;
+                for_close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, i, TokenType::BRACE_L, TokenType::BRACE_R);
+            }
+            auto for_tokens = std::vector<Token>{tokens.begin() + statement_start, tokens.begin() + for_close_brace_i + 1};
+            statements.push_back(parse_statement(std::span<const Token>(for_tokens)));
+            statement_start += for_tokens.size();
+            token_count = 0;
+            continue;
+        }
         if (tok.type != TokenType::SEMICOLON) {
             token_count++;
             continue;
@@ -224,10 +246,12 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
             }
             // TODO: handle statements like a++, a += 2; a = 3;
         }
-        case TokenType::IF: {
+        case TokenType::IF:
             statement = parse_if_statement(tokens);
             break;
-        }
+        case TokenType::FOR:
+            statement = parse_for_statement({tokens.begin(), tokens.end()});
+            break;
         default:
             throw std::runtime_error("Statement not recognized");
     }
@@ -338,6 +362,19 @@ std::unique_ptr<LetStatementAST> Parser::parse_let_statement(const std::vector<T
     // +3 -> skip 'let', identifier and '='
     auto expression = parse_expression({tokens.begin() + 3, tokens.end()});
     return std::move(std::make_unique<LetStatementAST>(ident_str, std::move(expression)));
+}
+
+std::unique_ptr<ForStatementAST> Parser::parse_for_statement(const std::vector<Token>& tokens)
+{
+    auto open_brace_i = 0;
+    while (tokens.at(open_brace_i).type != TokenType::BRACE_L) open_brace_i++;
+    auto close_brace_i = find_matching_token_index(tokens, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
+
+    auto source_expr = parse_expression({tokens.begin() + 1, tokens.begin() + open_brace_i});
+
+    auto condition = std::make_unique<BooleanExpressionAST>(std::move(source_expr));
+    auto statements = parse_function_body({tokens.begin() + open_brace_i + 1, tokens.begin() + close_brace_i});
+    return std::move(std::make_unique<ForStatementAST>(std::move(condition), std::move(statements)));
 }
 
 std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)

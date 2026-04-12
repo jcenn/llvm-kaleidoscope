@@ -174,6 +174,16 @@ public:
     llvm::Value* codegen() override;
 };
 
+class ForStatementAST : public StatementAST {
+public:
+    std::unique_ptr<BooleanExpressionAST> cond_expression;
+    std::vector<std::unique_ptr<StatementAST>> statements;
+
+    explicit ForStatementAST(std::unique_ptr<BooleanExpressionAST> expr, std::vector<std::unique_ptr<StatementAST>> arg_statements) : cond_expression(std::move(expr)), statements(std::move(arg_statements)) { };
+    llvm::Value* codegen() override;
+};
+
+
 // call statement (functions returning void)
 class CallStatementAST : public StatementAST {
 public:

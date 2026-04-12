@@ -5,7 +5,15 @@ declare i32 @putchar(i32)
 
 define i32 @main() {
 entry:
-  %tmp_call = call i32 @putchar(i32 67)
-  %tmp_call1 = call i32 @putchar(i32 10)
+  br label %for_header
+
+for_header:                                       ; preds = %loop, %entry
+  br i1 true, label %loop, label %after
+
+loop:                                             ; preds = %for_header
+  %tmp_call = call i32 @putchar(i32 10)
+  br label %for_header
+
+after:                                            ; preds = %for_header
   ret i32 0
 }
