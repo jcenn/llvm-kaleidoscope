@@ -138,6 +138,19 @@ public:
     llvm::Value* codegen() override;
 };
 
+// Node for conditional statements (if, for)
+// codegen should resolve to i1 where 0 -> false, 1 -> true
+class BooleanExpressionAST : public ExpressionAST {
+public:
+    std::unique_ptr<ExpressionAST> inner_expression;
+
+    explicit BooleanExpressionAST( std::unique_ptr<ExpressionAST>&& expr ) : inner_expression(std::move(expr)) { }
+
+    ~BooleanExpressionAST() override = default;
+
+    llvm::Value* codegen() override;
+};
+
 // Leaf node for literals inside expressions
 class CallExpressionAST : public ExpressionAST {
 public:

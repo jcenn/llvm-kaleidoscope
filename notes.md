@@ -27,3 +27,5 @@ Similar to official kaleidoscope specs
 - [ ] visitor pattern codegen
 - [ ] boolean expressions (==, <, >, !=, etc.)
 - [ ] more arithmetic operations 
+- [ ] handle negative values (and unary operators in general) 
+- [ ] variable reassignment after let statements 

@@ -277,8 +277,8 @@ std::unique_ptr<IfStatementAST> Parser::parse_if_statement(std::span<const Token
     while (tokens.at(open_brace_i).type != TokenType::BRACE_L) open_brace_i++;
 
     auto close_brace_i = find_matching_token_index({tokens.begin(), tokens.end()}, open_brace_i, TokenType::BRACE_L, TokenType::BRACE_R);
-
-    auto condition_expr = parse_expression(std::span<const Token>({tokens.begin() + 1, tokens.begin() + open_brace_i}));
+    auto inner_exp = parse_expression(std::span<const Token>({tokens.begin() + 1, tokens.begin() + open_brace_i}));
+    auto condition_expr = std::make_unique<BooleanExpressionAST>(std::move(inner_exp));
     auto statements = std::vector<std::unique_ptr<StatementAST>>{};
     int i = open_brace_i + 1;
     int statement_start_i = i;
@@ -398,7 +398,10 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
 std::map<BinaryOperator, int> bin_op_precedence{
     {BinaryOperator::Add, 1},
     {BinaryOperator::Subtract, 1},
-    {BinaryOperator::Multiply, 10}
+    {BinaryOperator::Multiply, 10},
+
+    // these operators turn the whole expression into a booleanExp
+    {BinaryOperator::CompareEQ, 100}
 };
 
 std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const Token> tokens)

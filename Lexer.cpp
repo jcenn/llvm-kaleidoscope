@@ -54,6 +54,12 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             continue;
         }
 
+        if (source[index] == '=' && source[index + 1] == '=') {
+            tokens.emplace_back(TokenType::EQUALS);
+            index += 2;
+            continue;
+        }
+
         // "if" followed by a space or (
         if (source.substr(index, 2) == "if" && source[index + 2] == ' ' ){
             tokens.emplace_back(TokenType::IF);

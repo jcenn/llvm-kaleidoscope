@@ -33,7 +33,7 @@ def main():
         expected_exit_code = None
         with open(kld_file, 'r') as f:
             first_line = f.readline().strip()
-            if first_line.startswith("// EXPECT "):
+            if first_line.startswith("// EXPECTS "):
                 try:
                     expected_exit_code = int(first_line[len("// EXPECT "):].strip())
                 except ValueError:

@@ -1,3 +1,5 @@
+// EXPECTS 15
+
 // sums all values from 0 to x
 fn sum(x) -> i32 {
     // x == 0 

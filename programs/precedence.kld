@@ -1,4 +1,4 @@
-// EXPECT 11
+// EXPECTS 11
 
 fn main() {
     return 2 + 3 * 3;

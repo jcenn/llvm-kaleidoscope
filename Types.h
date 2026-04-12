@@ -16,6 +16,7 @@ enum class BinaryOperator {
     Add,
     Subtract,
     Multiply,
+    CompareEQ,
     // Divide,
     // Modulus,
     // Equals,

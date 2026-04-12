@@ -3,27 +3,25 @@ source_filename = "main module"
 
 define i32 @fib(i32 %n) {
 entry:
-  %0 = sub i32 %n, 1
-  %ifcond = icmp eq i32 %0, 0
-  br i1 %ifcond, label %then, label %merge
+  %0 = icmp eq i32 %n, 1
+  br i1 %0, label %then, label %merge
 
 then:                                             ; preds = %entry
   ret i32 1
 
 merge:                                            ; preds = %entry
-  %1 = sub i32 %n, 2
-  %ifcond1 = icmp eq i32 %1, 0
-  br i1 %ifcond1, label %then2, label %merge3
+  %1 = icmp eq i32 %n, 2
+  br i1 %1, label %then1, label %merge2
 
-then2:                                            ; preds = %merge
+then1:                                            ; preds = %merge
   ret i32 1
 
-merge3:                                           ; preds = %merge
+merge2:                                           ; preds = %merge
   %2 = sub i32 %n, 1
   %tmp_call = call i32 @fib(i32 %2)
   %3 = sub i32 %n, 2
-  %tmp_call4 = call i32 @fib(i32 %3)
-  %4 = add i32 %tmp_call, %tmp_call4
+  %tmp_call3 = call i32 @fib(i32 %3)
+  %4 = add i32 %tmp_call, %tmp_call3
   ret i32 %4
 }
 

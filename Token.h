@@ -43,6 +43,7 @@ inline std::map<TokenType, BinaryOperator> binary_operators = {
     {TokenType::PLUS, BinaryOperator::Add},
     {TokenType::MINUS, BinaryOperator::Subtract},
     {TokenType::ASTERISK, BinaryOperator::Multiply},
+    {TokenType::EQUALS, BinaryOperator::CompareEQ},
 };
 
 struct Token {

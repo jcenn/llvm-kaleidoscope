@@ -1,4 +1,4 @@
-// EXPECT 8
+// EXPECTS 8
 
 fn add(x, y) -> i32 {
     return x + y;

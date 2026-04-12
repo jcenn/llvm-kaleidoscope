@@ -140,7 +140,7 @@ llvm::Value* IfStatementAST::codegen()
 
     llvm::Function* fn = Builder->GetInsertBlock()->getParent();
     // // Create blocks for then, else and resolution
-    cond_val = Builder->CreateICmpEQ(cond_val, llvm::ConstantInt::get(*Context, llvm::APInt(32, 0)), "ifcond");
+    // cond_val = Builder->CreateICmpEQ(cond_val, llvm::ConstantInt::get(*Context, llvm::APInt(32, 0)), "ifcond");
 
     // Create blocks and set up conditional jumps
     llvm::BasicBlock* then_block = llvm::BasicBlock::Create(*Context, "then", fn);
@@ -226,6 +226,12 @@ llvm::Value * BinaryExpressionAST::codegen() {
         case BinaryOperator::Multiply:
             return Builder->CreateMul(lhs_val, rhs_val);
             break;
+        case BinaryOperator::CompareEQ:
+            {
+                const auto val = Builder->CreateICmpEQ(lhs_val, rhs_val);
+                return val;
+            }
+            break;
     }
 
     throw std::logic_error("Codegen error couldn't parse operator");
@@ -258,6 +264,29 @@ llvm::Value * LiteralExpressionAST::codegen() {
         throw std::logic_error("Literal " + this->value_str + " is too large to fit in i32");
     }
     return llvm::ConstantInt::get(*Context, llvm::APInt(32, num, true));
+}
+
+llvm::Value* BooleanExpressionAST::codegen()
+{
+    const auto val = this->inner_expression->codegen();
+    if (!val)
+    {
+        throw std::runtime_error("Codegen error couldn't generate boolean expression");
+    }
+    // if we received an i1 value we can pass it further, if not we have to cast it to i1
+    if (val->getType()->isIntegerTy(1))
+    {
+        return val;
+    }else
+    {
+        // only works if val is i32
+        return Builder->CreateICmpNE(
+            val,
+            llvm::ConstantInt::get(val->getType(), 0),
+            "is_not_zero"
+        );
+    }
+
 }
 
 
