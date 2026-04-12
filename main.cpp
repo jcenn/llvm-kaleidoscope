@@ -52,7 +52,7 @@ void print_ast(const AST_Node* node, int depth = 0) {
         return;
     }
     if (auto statement = dynamic_cast<const LetStatementAST *>(node)) {
-        std::cout << "Let Statement for variable "  << statement->LHS_identifier << std::endl;
+        std::cout << "Let Statement for variable "  << statement->variable_identifier << std::endl;
         print_ast(statement->expression.get(), depth + 1);
         return;
     }
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
     AST->codegen();
 
     if (llvm::verifyModule(*TheModule, &llvm::errs())) {
-        std::cout << "Error: Module is broken!" << std::endl;
+        std::cout << "Error: Module verification failed!" << std::endl;
     }else {
         std::cout << "Module verified" << std::endl;
     }

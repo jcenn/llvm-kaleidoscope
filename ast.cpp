@@ -93,6 +93,27 @@ llvm::Value * CallStatementAST::codegen() {
 }
 
 llvm::Value * LetStatementAST::codegen() {
+    // Add an alloca statement to the current block/function
+    // Add pointer from that alloca variable symbol table
+    // TODO: handle pointers in variableExpressions
+
+    // store provided value under var pointer
+
+    // might be useful if we want to implement an optimization with placing all allocas at the beginning of the function's block
+    // auto fn = Builder->GetInsertBlock()->getParent();
+
+    llvm::AllocaInst* alloca_ptr = Builder->CreateAlloca(
+        llvm::Type::getInt32Ty(*Context),
+        nullptr, // array size, not used here
+        this->variable_identifier  // name for easier debugging
+    );
+
+    // TODO: this can override previous values (shadowing) should handle that
+    // maybe implement function scoped symbol tables
+    NamedValues[this->variable_identifier] = alloca_ptr;
+
+    auto expr_value = this->expression->codegen();
+    Builder->CreateStore(expr_value, alloca_ptr);
 
     return nullptr;
 }
@@ -216,7 +237,14 @@ llvm::Value * VariableExpressionAST::codegen() {
 
     if (!v) throw std::runtime_error("Variable expression with unknown identifier: " + identifier);
 
-    return v;
+    // ptr value from alloca, we want to create an instruction to load it
+    if (v->getType()->isPointerTy())
+    {
+        return Builder->CreateLoad( llvm::Type::getInt32Ty(*Context), v, this->identifier);
+    }else
+    {
+        return v;
+    }
 }
 
 llvm::Value * LiteralExpressionAST::codegen() {

@@ -1,0 +1,6 @@
+// EXPECTS 4
+
+fn main() {
+    let x = 4;
+    return x;
+}

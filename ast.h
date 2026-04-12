@@ -154,12 +154,10 @@ public:
 // ex. let x = 2 + 3;
 class LetStatementAST : public StatementAST {
 public:
-    std::string LHS_identifier;
+    std::string variable_identifier;
     std::unique_ptr<ExpressionAST> expression;
 
-    explicit LetStatementAST(const std::vector<Token>& tokens) : StatementAST() { };
-    // void resolve() override;
-
+    explicit LetStatementAST(const std::string& ident, std::unique_ptr<ExpressionAST> expr) : variable_identifier(ident), expression(std::move(expr)) { };
     llvm::Value* codegen() override;
 };
 

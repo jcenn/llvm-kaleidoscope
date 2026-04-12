@@ -208,10 +208,10 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
     std::unique_ptr<StatementAST> statement;
     switch (tokens.front().type) {
         // TODO: fix this shiet
-        // case TokenType::LET: {
-        //     statement = std::make_unique<LetStatementAST>(tokens);
-        //     break;
-        // }
+        case TokenType::LET: {
+            statement = parse_let_statement({tokens.begin(), tokens.end()});
+            break;
+        }
         case TokenType::RETURN:
             statement = parse_return_statement(tokens);
             break;
@@ -325,6 +325,19 @@ std::unique_ptr<IfStatementAST> Parser::parse_if_statement(std::span<const Token
     }
 
     return std::make_unique<IfStatementAST>(std::move(condition_expr), std::move(statements), std::move(else_statements));
+}
+
+std::unique_ptr<LetStatementAST> Parser::parse_let_statement(const std::vector<Token>& tokens)
+{
+    if (tokens.front().type != TokenType::LET)
+    {
+        throw std::logic_error("Let statement expected");
+    }
+
+    auto ident_str = tokens.at(1).value.value();
+    // +3 -> skip 'let', identifier and '='
+    auto expression = parse_expression({tokens.begin() + 3, tokens.end()});
+    return std::move(std::make_unique<LetStatementAST>(ident_str, std::move(expression)));
 }
 
 std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)
