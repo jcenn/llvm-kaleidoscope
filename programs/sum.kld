@@ -1,0 +1,13 @@
+// sums all values from 0 to x
+fn sum(x) -> i32 {
+    // x == 0 
+    if x {
+        return 0;
+    }
+    return x + sum(x - 1);
+}
+
+fn main() {
+    // 1 + 2 + 3 + 4 + 5 => 15
+    return sum(5);
+}

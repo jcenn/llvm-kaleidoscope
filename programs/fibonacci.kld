@@ -1,15 +1,17 @@
-fn fib(x) -> i32 {
-    // x == 1
-    if x - 1 {
+// compute the n-th value of thea fibonacci sequence
+fn fib(n) -> i32 {
+    // n == 1
+    if n - 1 {
         return 1;
     }
-    // x == 2
-    if x - 2{
+    // n == 2
+    if n - 2{
         return 1;
     }
 
-    return fib(x-1) + fib(x-2);
+    return fib(n-1) + fib(n-2);
 }
+
 fn main() {
     return fib(12);
 }
