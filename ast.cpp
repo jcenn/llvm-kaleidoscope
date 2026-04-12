@@ -181,6 +181,7 @@ llvm::Value* IfStatementAST::codegen()
             statement->codegen();
         }
 
+
         // if block wasn't terminated with a `return` we jump to the final block
         if (!else_block->getTerminator())
         {
@@ -188,9 +189,31 @@ llvm::Value* IfStatementAST::codegen()
         }
 
     }
+    // both code paths terminate so there's no need for merge
+    // TODO: check if blocks are terminated
+    
+    // Check if anyone actually needs the merge block
+    // A block only needs the merge block if it didn't have its own terminator
+    bool then_needs_merge = !then_block->getTerminator();
+    bool else_needs_merge = else_block && !else_block->getTerminator();
+    
+    // If there is no else statement, the 'false' condition branches straight to merge
+    bool false_needs_merge = this->else_statements.empty(); 
 
-    fn->insert(fn->end(), merge_block);
-    Builder->SetInsertPoint(merge_block);
+    if (then_needs_merge || else_needs_merge || false_needs_merge) {
+        // Someone branches here, so we must add it and set the insert point
+        fn->insert(fn->end(), merge_block);
+        Builder->SetInsertPoint(merge_block);
+    } else {
+        // No one branches here! Both paths returned early.
+        // We delete the block to prevent the "missing terminator" error.
+        delete merge_block; 
+        
+        // Note: Do NOT set the insert point to a deleted block. 
+        // Any statements parsed after this IF statement in the same scope 
+        // will be unreachable (dead code), but you might want to handle that 
+        // cleanly in your AST loop.
+    }
     return nullptr;
 }
 
