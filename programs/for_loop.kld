@@ -3,7 +3,7 @@ extern putchar(c) -> i32;
 
 
 fn main(){
-    for 1 == 1 {
+    for 1 == 0 {
         putchar(10);
     }
     return 0;
