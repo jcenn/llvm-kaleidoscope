@@ -17,6 +17,15 @@ std::unique_ptr<llvm::Module> TheModule;
 // The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
 std::map<std::string, llvm::Value *> NamedValues;
 
+std::map<BinaryOperator, int> bin_op_precedence{
+        {BinaryOperator::Add, 1},
+        {BinaryOperator::Subtract, 1},
+        {BinaryOperator::Multiply, 10},
+
+        // these operators turn the whole expression into a booleanExp
+        {BinaryOperator::CompareEQ, 100}
+};
+
 void Parser::InitializeCodeGen() {
     Context = std::make_unique<llvm::LLVMContext>();
     Builder = std::make_unique<llvm::IRBuilder<>>(*Context);
@@ -237,15 +246,21 @@ std::unique_ptr<StatementAST> Parser::parse_statement(std::span<const Token> tok
         case TokenType::RETURN:
             statement = parse_return_statement(tokens);
             break;
-        case TokenType::IDENTIFIER: {
-            // Call statement like InitWindow();
-            if (tokens.at(1).type == TokenType::BRACKET_L)
+        case TokenType::IDENTIFIER:
             {
-                statement = parse_call_statement(tokens);
-                break;
+                // Call statement like InitWindow();
+                if (tokens.at(1).type == TokenType::BRACKET_L)
+                {
+                    statement = parse_call_statement(tokens);
+                    break;
+                }
+                // TODO: handle statements like a++, a += 2; a = 3;
+                if (tokens.at(1).type == TokenType::ASSIGNMENT)
+                {
+                    statement = parse_assignment_statement({tokens.begin(), tokens.end()});
+                    break;
+                }
             }
-            // TODO: handle statements like a++, a += 2; a = 3;
-        }
         case TokenType::IF:
             statement = parse_if_statement(tokens);
             break;
@@ -377,6 +392,14 @@ std::unique_ptr<ForStatementAST> Parser::parse_for_statement(const std::vector<T
     return std::move(std::make_unique<ForStatementAST>(std::move(condition), std::move(statements)));
 }
 
+std::unique_ptr<AssignmentStatementAST> Parser::parse_assignment_statement(const std::vector<Token>& tokens)
+{
+    // tokens: [ident, =, expression]
+    auto ident_str = tokens.at(0).value.value();
+    auto expr = parse_expression({tokens.begin() + 2, tokens.end()});
+    return std::move(std::make_unique<AssignmentStatementAST>(ident_str, std::move(expr)));
+}
+
 std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> tokens)
 {
     std::unique_ptr<ExpressionAST> expression{};
@@ -431,15 +454,6 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
 
     throw std::runtime_error("Tried to parse an invalid expression");
 }
-
-std::map<BinaryOperator, int> bin_op_precedence{
-    {BinaryOperator::Add, 1},
-    {BinaryOperator::Subtract, 1},
-    {BinaryOperator::Multiply, 10},
-
-    // these operators turn the whole expression into a booleanExp
-    {BinaryOperator::CompareEQ, 100}
-};
 
 std::unique_ptr<ExpressionAST> Parser::parse_binary_expression(std::span<const Token> tokens)
 {

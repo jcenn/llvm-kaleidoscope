@@ -93,7 +93,7 @@ std::vector<Token> Lexer::parse(const std::string& input) {
                 tokens.emplace_back(TokenType::ASTERISK);
                 continue;
             case '=':
-                tokens.emplace_back(TokenType::EQUALS);
+                tokens.emplace_back(TokenType::ASSIGNMENT);
                 continue;
             case '(':
                 tokens.emplace_back(TokenType::BRACKET_L);

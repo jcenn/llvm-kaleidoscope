@@ -17,7 +17,7 @@ enum class TokenType {
     FN, LET, RETURN, EXTERN, IF, ELSE, FOR,
 
     // SYMBOLS
-    COLON, SEMICOLON, COMMA,
+    COLON, SEMICOLON, COMMA, ASSIGNMENT,
 
     // -> used for return type declarations
     ARROW,

@@ -248,6 +248,25 @@ llvm::Value* IfStatementAST::codegen()
     return nullptr;
 }
 
+llvm::Value* AssignmentStatementAST::codegen()
+{
+    if (!NamedValues.contains(this->var_identifier))
+    {
+        throw std::logic_error("Variable identifier not recognized");
+    }
+    llvm::Value* var_ptr = NamedValues.at(this->var_identifier);
+
+    llvm::Value* val = this->rhs_expression->codegen();
+    if (!val)
+    {
+        throw std::logic_error("Codegen error couldn't parse rhs value");
+    }
+
+    Builder->CreateStore(val, var_ptr);
+    // might be useful to return val for something like a = b = 3;
+    return nullptr;
+}
+
 void ModuleAST::codegen() {
     for (auto& declaration : this->declarations) {
         if (auto proto = dynamic_cast<PrototypeAST*>(declaration.get())) {

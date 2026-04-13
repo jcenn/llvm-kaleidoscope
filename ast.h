@@ -229,5 +229,13 @@ public:
     };
     llvm::Value* codegen() override;
 };
+class AssignmentStatementAST : public StatementAST {
+public:
+    std::string var_identifier;
+    std::unique_ptr<ExpressionAST> rhs_expression{};
+
+    explicit AssignmentStatementAST(const std::string&  ident, std::unique_ptr<ExpressionAST>&& expr) : var_identifier(ident), rhs_expression(std::move(expr)) { };
+    llvm::Value* codegen() override;
+};
 
 #endif //LLVM_KALEIDOSCOPE_AST_H

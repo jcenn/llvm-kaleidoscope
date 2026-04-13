@@ -1,0 +1,8 @@
+// EXPECTS 3
+
+fn main() {
+    let x = 0;
+    x = x + 1;
+    x = x + 2;
+    return x;
+}

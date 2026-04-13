@@ -40,10 +40,13 @@ namespace Parser {
     std::unique_ptr<IfStatementAST> parse_if_statement(std::span<const Token> tokens);
     std::unique_ptr<LetStatementAST> parse_let_statement(const std::vector<Token>& tokens);
     std::unique_ptr<ForStatementAST> parse_for_statement(const std::vector<Token>& tokens);
+    std::unique_ptr<AssignmentStatementAST> parse_assignment_statement(const std::vector<Token>& tokens);
 
     std::unique_ptr<ExpressionAST> parse_expression(std::span<const Token> tokens);
     std::unique_ptr<ExpressionAST> parse_binary_expression(std::span<const Token> tokens);
     std::unique_ptr<ExpressionAST> parse_call_expression(std::span<const Token> tokens);
+
+
 }
 
 
