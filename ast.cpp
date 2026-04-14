@@ -28,7 +28,7 @@ llvm::Function * PrototypeAST::codegen() {
 
     std::vector<llvm::Type*> arg_types{};
     for (auto& arg : this->args) {
-        arg_types.push_back(llvm::Type::getInt32Ty(*Context));
+        arg_types.push_back(get_llvm_type(arg.second));
     }
     llvm::Type* return_type = get_llvm_type(this->ret_type);
     llvm::FunctionType* ft = llvm::FunctionType::get(return_type, arg_types, false);

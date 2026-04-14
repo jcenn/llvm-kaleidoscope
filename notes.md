@@ -8,6 +8,7 @@ Syntax like
 - Modify prototype parsing to treat parameters the same way as normal variables
 - Make expressions bubble their types up to allow for type inference
 - Check if expression type matches specified type for let statements and assignments
+- Make sure variables aren't assigned with a void type
 ## Language features
 Similar to official kaleidoscope specs
 - accepts only integers ( no type declarations )
