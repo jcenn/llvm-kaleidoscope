@@ -117,7 +117,7 @@ std::unique_ptr<FunctionAST> Parser::parse_function_def(std::span<const Token> t
 }
 
 // expects tokens to only contain the content between function parentheses ex. for `foo(a, b) tokens = [a, ',', b]
-std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_parameters(std::span<const Token> tokens) {
+std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_parameters(const std::span<const Token> tokens) {
     // Parse function arguments
     auto arg_identifiers = std::vector<std::pair<std::string, TypeIdentifier>>();
     size_t arg_index = 0;
@@ -126,7 +126,17 @@ std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_param
         auto tok = tokens.at(arg_index);
         if (tok.type == TokenType::IDENTIFIER) {
             // TODO: handle different types
-            arg_identifiers.emplace_back(tok.value.value(), TypeIdentifier::I32);
+            std::optional<TypeIdentifier> tok_type;
+            if (tokens.size() > arg_index + 2 && tokens.at(arg_index + 1).type == TokenType::COLON && tokens.at(arg_index + 2).type == TokenType::IDENTIFIER)
+            {
+                tok_type = type_identifiers.at(tokens.at(arg_index + 2).value.value());
+                arg_index += 2;
+            }
+            if (!tok_type)
+            {
+                throw std::runtime_error("Couldn't find type hint for parameter " + tok.value.value());
+            }
+            arg_identifiers.emplace_back(tok.value.value(), tok_type.value());
         }
         arg_index++;
     }
@@ -218,10 +228,10 @@ std::unique_ptr<PrototypeAST> Parser::parse_prototype(std::span<const Token> tok
     // TODO: something like `Parser::parse_type_expression(tokens, close_paren_i + 1)`
     if (tokens.size() > close_paren_i + 1 &&  tokens.at(close_paren_i + 1).type == TokenType::ARROW && tokens.at(close_paren_i + 2).type == TokenType::IDENTIFIER) {
         auto type_ident = tokens.at(close_paren_i + 2).value.value();
-        if (!Parser::type_identifiers.contains(type_ident)) {
+        if (!type_identifiers.contains(type_ident)) {
             throw std::runtime_error("Type identifier " + type_ident + " is not recognized by parser");
         }
-        ret_type = Parser::type_identifiers.at(type_ident);
+        ret_type = type_identifiers.at(type_ident);
     }
 
     // main has inferred type
@@ -374,9 +384,36 @@ std::unique_ptr<LetStatementAST> Parser::parse_let_statement(const std::vector<T
     }
 
     auto ident_str = tokens.at(1).value.value();
+    // TODO: check for type hints
     // +3 -> skip 'let', identifier and '='
-    auto expression = parse_expression({tokens.begin() + 3, tokens.end()});
-    return std::move(std::make_unique<LetStatementAST>(ident_str, std::move(expression)));
+
+    int eq_sign_i = 0;
+    while (tokens.at(eq_sign_i).type != TokenType::ASSIGNMENT) eq_sign_i++;
+    std::optional<TypeIdentifier> ident;
+    // Let declaration with type hint
+    if (eq_sign_i != 2)
+    {
+        auto hint_tok = tokens.at(eq_sign_i-1);
+        if (type_identifiers.contains(hint_tok.value.value()))
+        {
+            ident = type_identifiers.at(hint_tok.value.value());
+        }else
+        {
+            throw std::logic_error("Identifier expected");
+        }
+    }
+
+    auto expression = parse_expression({tokens.begin() + eq_sign_i + 1, tokens.end()});
+
+    // create let statement node with/without type hint
+    std::unique_ptr<LetStatementAST> let_statement;
+    if (ident){
+        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression), ident.value());
+    }else
+    {
+        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression));
+    }
+    return std::move(let_statement);
 }
 
 std::unique_ptr<ForStatementAST> Parser::parse_for_statement(const std::vector<Token>& tokens)

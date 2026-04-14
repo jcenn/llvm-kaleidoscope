@@ -15,7 +15,9 @@ entry:
 
 define void @test() {
 entry:
+  %a = alloca i32, align 4
   %tmp_call = call i32 @add(i32 1, i32 1)
+  store i32 %tmp_call, ptr %a, align 4
   ret void
 }
 

@@ -1,16 +1,16 @@
 // EXPECTS 8
 
-fn add(x, y) -> i32 {
+fn add(x: i32, y: i32) -> i32 {
     return x + y;
 }
 
-fn sub(x, y) -> i32{
+fn sub(x: i32, y: i32) -> i32{
     return x - y;
 }
 
 // Functions without a type specifier are assumed to return void
 fn test() {
-    add(1, 1);
+    let a: i32 = add(1, 1);
     return;
 }
 

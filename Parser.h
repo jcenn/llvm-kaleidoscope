@@ -23,10 +23,6 @@ namespace Parser {
     // Must only tokens between function's ( and ) tokens
     std::vector<std::vector<Token>> get_function_arg_tokens(std::vector<Token> &tokens);
 
-    inline const std::map<std::string, TypeIdentifier> type_identifiers = {
-        {"void", TypeIdentifier::VOID},
-        {"i32", TypeIdentifier::I32},
-    };
     std::unique_ptr<ModuleAST> parse_tokens(const std::vector<Token>& tokens);
 
     std::unique_ptr<FunctionAST> parse_function_def(std::span<const Token> tokens);

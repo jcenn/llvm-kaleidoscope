@@ -169,8 +169,15 @@ class LetStatementAST : public StatementAST {
 public:
     std::string variable_identifier;
     std::unique_ptr<ExpressionAST> expression;
+    TypeIdentifier type_hint;
 
-    explicit LetStatementAST(const std::string& ident, std::unique_ptr<ExpressionAST> expr) : variable_identifier(ident), expression(std::move(expr)) { };
+    explicit LetStatementAST(const std::string& ident, std::unique_ptr<ExpressionAST> expr) : variable_identifier(ident), expression(std::move(expr))
+    {
+        // TODO: figure out var type from expression
+        // get_expression_type()? or add to parse_expression'
+        type_hint = TypeIdentifier::String;
+    };
+    explicit LetStatementAST(const std::string& ident, std::unique_ptr<ExpressionAST> expr, TypeIdentifier type_h) : variable_identifier(ident), expression(std::move(expr)), type_hint(type_h) { };
     llvm::Value* codegen() override;
 };
 

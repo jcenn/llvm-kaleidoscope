@@ -9,23 +9,28 @@
 
 #include <iostream>
 
+llvm::Type* get_llvm_type(const TypeIdentifier type_ident)
+{
+    switch (type_ident)
+    {
+        case TypeIdentifier::I32:
+            return llvm::Type::getInt32Ty(*Context);
+        case TypeIdentifier::VOID:
+            return llvm::Type::getVoidTy(*Context);
+        case TypeIdentifier::Double:
+            return llvm::Type::getDoubleTy(*Context);
+        default:
+            throw std::logic_error("Invalid type identifier");
+    }
+}
+
 llvm::Function * PrototypeAST::codegen() {
 
     std::vector<llvm::Type*> arg_types{};
     for (auto& arg : this->args) {
         arg_types.push_back(llvm::Type::getInt32Ty(*Context));
     }
-    llvm::Type* return_type = nullptr;
-    switch (this->ret_type) {
-        case TypeIdentifier::VOID:
-            return_type = llvm::Type::getVoidTy(*Context);
-            break;
-        case TypeIdentifier::I32:
-            return_type = llvm::Type::getInt32Ty(*Context);
-            break;
-        default:
-            throw std::logic_error("Invalid return type");
-    }
+    llvm::Type* return_type = get_llvm_type(this->ret_type);
     llvm::FunctionType* ft = llvm::FunctionType::get(return_type, arg_types, false);
     llvm::Function* fn = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, identifier, TheModule.get());
 
@@ -101,9 +106,8 @@ llvm::Value * LetStatementAST::codegen() {
 
     // might be useful if we want to implement an optimization with placing all allocas at the beginning of the function's block
     // auto fn = Builder->GetInsertBlock()->getParent();
-
     llvm::AllocaInst* alloca_ptr = Builder->CreateAlloca(
-        llvm::Type::getInt32Ty(*Context),
+        get_llvm_type(this->type_hint),
         nullptr, // array size, not used here
         this->variable_identifier  // name for easier debugging
     );

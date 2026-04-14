@@ -80,6 +80,9 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             case ';':
                 tokens.emplace_back(TokenType::SEMICOLON);
                 continue;
+            case ':':
+                tokens.emplace_back(TokenType::COLON);
+                continue;
             case ',':
                 tokens.emplace_back(TokenType::COMMA);
                 continue;
@@ -134,7 +137,7 @@ std::vector<Token> Lexer::parse(const std::string& input) {
         // let x = 5 -> space
         // let x=5 -> '='
         // fn main() -> '('
-        constexpr char terminator_characters[] = {' ', ';', ',', '=', '(', ')', '{', '}', '+', '-', '*', '/', '%', 0};
+        constexpr char terminator_characters[] = {' ', ';', ':', ',', '=', '(', ')', '{', '}', '+', '-', '*', '/', '%', 0};
         std::string_view terminators = terminator_characters;
 
         char c = source[start_index + count];
