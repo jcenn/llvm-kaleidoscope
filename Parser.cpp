@@ -18,6 +18,7 @@ std::unique_ptr<llvm::Module> TheModule;
 std::map<std::string, TypeIdentifier> var_type_identifiers{};
 
 // TODO: Function symbol table for call statement return types
+// TODO: should identify by identifier + arg types not just identifier string
 std::map<std::string, TypeIdentifier> function_type_identifiers{};
 
 
@@ -37,13 +38,18 @@ TypeIdentifier get_literal_type(const std::string& literal)
         return TypeIdentifier::String;
     }
 
+    bool only_digits = true;
     // Check if all characters are digits (integer)
     for (const auto& c : literal)
     {
         if (!std::isdigit(c))
         {
+            only_digits = false;
             break;
         }
+    }
+    if (only_digits)
+    {
         return TypeIdentifier::I32;
     }
 
@@ -58,6 +64,7 @@ TypeIdentifier get_literal_type(const std::string& literal)
             if (dot_index == -1)
             {
                 dot_index = i;
+                continue;
             }
             if (dot_index != -1)
             {
@@ -257,7 +264,7 @@ std::vector<std::unique_ptr<StatementAST>> Parser::parse_function_body(std::span
         statements.push_back(parse_statement(statement_tokens));
         if (statement_start + token_count >= tokens.size()) break;
         statement_start += token_count + 1; // skip ; and point at the first token of the next statement
-        token_count = 1;
+        token_count = 0;
     }
     return statements;
 }
@@ -291,6 +298,11 @@ std::unique_ptr<PrototypeAST> Parser::parse_prototype(std::span<const Token> tok
     if (identifier_token.value.value() == "main") {
         ret_type = TypeIdentifier::I32;
     }
+    if (function_type_identifiers.contains(identifier_token.value.value()))
+    {
+        throw std::runtime_error("Function redeclaration: " + identifier_token.value.value());
+    }
+    function_type_identifiers.insert({identifier_token.value.value(), ret_type});
     auto arg_tokens = std::span(tokens).subspan(open_paren_i + 1, close_paren_i - open_paren_i - 1);
     //auto arg_tokens = std::vector(tokens.begin() + open_paren_i + 1, tokens.begin() + close_paren_i);
     auto arg_identifiers = Parser::parse_function_parameters( arg_tokens );
@@ -649,6 +661,12 @@ std::unique_ptr<ExpressionAST> Parser::parse_call_expression(std::span<const Tok
         arg_expressions.push_back(std::move(expression));
     }
     expr = std::make_unique<CallExpressionAST>(callee_identifier, std::move(arg_expressions));
+    if (!function_type_identifiers.contains(callee_identifier))
+    {
+        throw std::logic_error("Tried to create a call expression with unknown identifier");
+    }
+    auto ret_type = function_type_identifiers.at(callee_identifier);
+    expr->return_type = ret_type;
     return std::move(expr);
 }
 

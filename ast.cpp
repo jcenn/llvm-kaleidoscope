@@ -287,8 +287,60 @@ void ModuleAST::codegen() {
     }
 }
 
+llvm::Value* get_op(TypeIdentifier type_ident, BinaryOperator op, llvm::Value* lhs_val, llvm::Value* rhs_val)
+{
+    // TODO: handle doubles
+    switch (op) {
+    case BinaryOperator::Add:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateAdd(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            return Builder->CreateFAdd(lhs_val, rhs_val);
+        }
+        break;
+    case BinaryOperator::Subtract:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateSub(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            return Builder->CreateFSub(lhs_val, rhs_val);
+        }
+        break;
+    case BinaryOperator::Multiply:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateMul(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            return Builder->CreateFMul(lhs_val, rhs_val);
+        }
+        break;
+    case BinaryOperator::CompareEQ:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateICmpEQ(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            return Builder->CreateFCmpOEQ(lhs_val, rhs_val);
+        }
+        break;
+    }
+
+    throw std::logic_error("Codegen error couldn't parse operator");
+}
 
 llvm::Value * BinaryExpressionAST::codegen() {
+    if (this->lhs->return_type != this->rhs->return_type) {
+        throw std::logic_error("Tried to parse a binary expression with mismatched types");
+    }
+
     auto lhs_val = this->lhs->codegen();
     auto rhs_val = this->rhs->codegen();
 
@@ -296,25 +348,8 @@ llvm::Value * BinaryExpressionAST::codegen() {
         throw std::logic_error("Codegen error couldn't parse lhs or rhs value");
     }
 
-    switch (this->operator_) {
-        case BinaryOperator::Add:
-            return Builder->CreateAdd(lhs_val, rhs_val);
-            break;
-        case BinaryOperator::Subtract:
-            return Builder->CreateSub(lhs_val, rhs_val);
-            break;
-        case BinaryOperator::Multiply:
-            return Builder->CreateMul(lhs_val, rhs_val);
-            break;
-        case BinaryOperator::CompareEQ:
-            {
-                const auto val = Builder->CreateICmpEQ(lhs_val, rhs_val);
-                return val;
-            }
-            break;
-    }
+    return get_op(this->lhs->return_type, this->operator_, lhs_val, rhs_val);
 
-    throw std::logic_error("Codegen error couldn't parse operator");
     return nullptr;
 }
 
@@ -326,7 +361,19 @@ llvm::Value * VariableExpressionAST::codegen() {
     // ptr value from alloca, we want to create an instruction to load it
     if (v->getType()->isPointerTy())
     {
-        return Builder->CreateLoad( llvm::Type::getInt32Ty(*Context), v, this->identifier);
+        switch (this->return_type)
+        {
+            case TypeIdentifier::I32:
+                {
+                    return Builder->CreateLoad( llvm::Type::getInt32Ty(*Context), v, this->identifier);
+                }
+            break;
+            case TypeIdentifier::Double:
+                {
+                    return Builder->CreateLoad( llvm::Type::getDoubleTy(*Context), v, this->identifier);
+                }
+            break;
+        }
     }else
     {
         return v;
@@ -334,16 +381,42 @@ llvm::Value * VariableExpressionAST::codegen() {
 }
 
 llvm::Value * LiteralExpressionAST::codegen() {
-    int num = 0;
-    try {
-        num = std::stoi(this->value_str);
-    } catch (const std::invalid_argument& e) {
-        // String contained no digits
-        throw std::logic_error("Tried to parse " + this->value_str + " as a number");
-    } catch (const std::out_of_range& e) {
-        throw std::logic_error("Literal " + this->value_str + " is too large to fit in i32");
+    switch (this->return_type)
+    {
+        case TypeIdentifier::I32:
+            {
+                int num = 0;
+                try {
+                    num = std::stoi(this->value_str);
+                } catch (const std::invalid_argument& e) {
+                    // String contained no digits
+                    throw std::logic_error("Tried to parse " + this->value_str + " as a number");
+                } catch (const std::out_of_range& e) {
+                    throw std::logic_error("Literal " + this->value_str + " is too large to fit in i32");
+                }
+                return llvm::ConstantInt::get(*Context, llvm::APInt(32, num, true));
+            }
+        break;
+        case TypeIdentifier::Double:
+            {
+                double num = 0.0;
+                try {
+                    num = std::stod(this->value_str);
+                } catch (const std::invalid_argument& e) {
+                    // String contained no digits
+                    throw std::logic_error("Tried to parse " + this->value_str + " as a double");
+                } catch (const std::out_of_range& e) {
+                    throw std::logic_error("Literal " + this->value_str + " is too large to fit in double");
+                }
+                return llvm::ConstantFP::get(*Context, llvm::APFloat(num));
+            }
+        break;
+        case TypeIdentifier::VOID:
+        break;
+        case TypeIdentifier::String:
+        break;
     }
-    return llvm::ConstantInt::get(*Context, llvm::APInt(32, num, true));
+    throw std::logic_error("Codegen error couldn't parse literal expression");
 }
 
 llvm::Value* BooleanExpressionAST::codegen()

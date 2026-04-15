@@ -107,6 +107,7 @@ public:
     ) : operator_(operator_)
     {
         if (lhs->return_type != rhs->return_type) throw std::runtime_error("Binary operand type mismatch");
+        this->return_type = lhs->return_type;
         this->lhs = std::move(lhs);
         this->rhs = std::move(rhs);
     }
@@ -151,7 +152,7 @@ public:
 class BooleanExpressionAST : public ExpressionAST {
 public:
     std::unique_ptr<ExpressionAST> inner_expression;
-
+    // TODO: this->return_type = bool
     explicit BooleanExpressionAST( std::unique_ptr<ExpressionAST>&& expr ) : inner_expression(std::move(expr)) { }
 
     ~BooleanExpressionAST() override = default;
