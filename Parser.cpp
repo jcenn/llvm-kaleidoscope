@@ -14,8 +14,12 @@ std::unique_ptr<llvm::IRBuilder<>> Builder;
 // TheModule is an LLVM construct that contains functions and global variables. In many ways, it is the top-level structure that the LLVM IR uses to contain code. It will own the memory for all the IR that we generate, which is why the codegen() method returns a raw Value*, rather than a unique_ptr<Value>.
 std::unique_ptr<llvm::Module> TheModule;
 
-// The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
-std::map<std::string, llvm::Value *> NamedValues;
+// TODO: need to correctly manage scope
+std::map<std::string, TypeIdentifier> var_type_identifiers{};
+
+// TODO: Function symbol table for call statement return types
+std::map<std::string, TypeIdentifier> function_type_identifiers{};
+
 
 std::map<BinaryOperator, int> bin_op_precedence{
         {BinaryOperator::Add, 1},
@@ -25,6 +29,50 @@ std::map<BinaryOperator, int> bin_op_precedence{
         // these operators turn the whole expression into a booleanExp
         {BinaryOperator::CompareEQ, 100}
 };
+
+TypeIdentifier get_literal_type(const std::string& literal)
+{
+    if (literal.front() == '"' && literal.back() == '"')
+    {
+        return TypeIdentifier::String;
+    }
+
+    // Check if all characters are digits (integer)
+    for (const auto& c : literal)
+    {
+        if (!std::isdigit(c))
+        {
+            break;
+        }
+        return TypeIdentifier::I32;
+    }
+
+    // if we have a single . - it's a double
+    if (literal.contains('.'))
+    {
+        int dot_index = -1;
+        for (int i=0; i < literal.size(); i++)
+        {
+            const auto& c = literal.at(i);
+            if (c != '.') continue;
+            if (dot_index == -1)
+            {
+                dot_index = i;
+            }
+            if (dot_index != -1)
+            {
+                throw std::runtime_error("Double literal can't contain more than 1 '.'");
+            }
+            if (dot_index == literal.size() - 1)
+            {
+                throw std::runtime_error("Double literal can't end in a '.'");
+            }
+        }
+        return TypeIdentifier::Double;
+    }
+
+    throw std::runtime_error("Unrecognized literal type pattern");
+}
 
 void Parser::InitializeCodeGen() {
     Context = std::make_unique<llvm::LLVMContext>();
@@ -139,6 +187,11 @@ std::vector<std::pair<std::string, TypeIdentifier>> Parser::parse_function_param
             arg_identifiers.emplace_back(tok.value.value(), tok_type.value());
         }
         arg_index++;
+    }
+
+    for (auto arg : arg_identifiers)
+    {
+        var_type_identifiers.insert({arg.first, arg.second});
     }
     return arg_identifiers;
 }
@@ -389,14 +442,14 @@ std::unique_ptr<LetStatementAST> Parser::parse_let_statement(const std::vector<T
 
     int eq_sign_i = 0;
     while (tokens.at(eq_sign_i).type != TokenType::ASSIGNMENT) eq_sign_i++;
-    std::optional<TypeIdentifier> ident;
+    std::optional<TypeIdentifier> type_ident;
     // Let declaration with type hint
     if (eq_sign_i != 2)
     {
         auto hint_tok = tokens.at(eq_sign_i-1);
         if (type_identifiers.contains(hint_tok.value.value()))
         {
-            ident = type_identifiers.at(hint_tok.value.value());
+            type_ident = type_identifiers.at(hint_tok.value.value());
         }else
         {
             throw std::logic_error("Identifier expected");
@@ -407,11 +460,27 @@ std::unique_ptr<LetStatementAST> Parser::parse_let_statement(const std::vector<T
 
     // create let statement node with/without type hint
     std::unique_ptr<LetStatementAST> let_statement;
-    if (ident){
-        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression), ident.value());
+    if (type_ident){
+        if (type_ident.value() != expression->return_type)
+        {
+            // TODO: need to handle call statement return values
+            throw std::logic_error("Let type hint for variable " + ident_str + " doesn't match expression's return type");
+        }
+        if (type_ident == TypeIdentifier::VOID)
+        {
+            throw std::logic_error("Can't assign expression that returns void to variable " + ident_str);
+        }
+        var_type_identifiers.insert({ident_str, type_ident.value()});
+        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression), type_ident.value());
     }else
     {
-        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression));
+        auto expr_type = expression->return_type;
+        if (expr_type == TypeIdentifier::VOID)
+        {
+            throw std::logic_error("Can't assign expression that returns void to variable " + ident_str);
+        }
+        var_type_identifiers.insert({ident_str, expr_type});
+        let_statement = std::make_unique< LetStatementAST>(ident_str, std::move(expression), expr_type);
     }
     return std::move(let_statement);
 }
@@ -459,10 +528,10 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
     if (tokens.size() == 1) {
         std::unique_ptr<ExpressionAST> expr;
         if (tokens.front().type == TokenType::LITERAL) {
-
-            expr = std::make_unique<LiteralExpressionAST>(tokens.front());
+            expr = std::make_unique<LiteralExpressionAST>(tokens.front(), get_literal_type(tokens.front().value.value()));
         }else if (tokens.front().type == TokenType::IDENTIFIER) {
-            expr = std::make_unique<VariableExpressionAST>(tokens.front());
+            auto ident = tokens.front().value.value();
+            expr = std::make_unique<VariableExpressionAST>(tokens.front(), var_type_identifiers.at(ident));
         }else {
             throw std::runtime_error("Tried to parse an expression with invalid identifier");
         }

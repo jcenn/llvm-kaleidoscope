@@ -9,6 +9,9 @@ Syntax like
 - Make expressions bubble their types up to allow for type inference
 - Check if expression type matches specified type for let statements and assignments
 - Make sure variables aren't assigned with a void type
+
+- arithmetic operations on doubles
+
 ## Language features
 Similar to official kaleidoscope specs
 - accepts only integers ( no type declarations )

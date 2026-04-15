@@ -88,6 +88,7 @@ public:
 // Abstract class that acts as a common parent for other Expression types
 class ExpressionAST : public AST_Node {
 public:
+    TypeIdentifier return_type = TypeIdentifier::VOID;
     explicit ExpressionAST() : AST_Node() { }
     ~ExpressionAST() override = default;
     // void resolve() override = 0;
@@ -105,6 +106,7 @@ public:
         std::unique_ptr<ExpressionAST>&& rhs
     ) : operator_(operator_)
     {
+        if (lhs->return_type != rhs->return_type) throw std::runtime_error("Binary operand type mismatch");
         this->lhs = std::move(lhs);
         this->rhs = std::move(rhs);
     }
@@ -119,7 +121,10 @@ public:
 class VariableExpressionAST : public ExpressionAST {
 public:
     std::string identifier;
-    explicit VariableExpressionAST(const Token& tok) : ExpressionAST(), identifier(tok.value.value()) { }
+    explicit VariableExpressionAST(const Token& tok, TypeIdentifier var_type) : ExpressionAST(), identifier(tok.value.value())
+    {
+        this->return_type = var_type;
+    }
     ~VariableExpressionAST() override = default;
 
     // void resolve() override;
@@ -131,7 +136,10 @@ public:
 class LiteralExpressionAST : public ExpressionAST {
 public:
     std::string value_str;
-    explicit LiteralExpressionAST(const Token& tok) : ExpressionAST(), value_str(tok.value.value()) { }
+    explicit LiteralExpressionAST(const Token& tok, const TypeIdentifier ret_type) : ExpressionAST(), value_str(tok.value.value())
+    {
+        this->return_type = ret_type;
+    }
     ~LiteralExpressionAST() override = default;
 
     // void resolve() override;

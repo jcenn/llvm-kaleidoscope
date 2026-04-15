@@ -9,6 +9,9 @@
 
 #include <iostream>
 
+// The NamedValues map keeps track of which values are defined in the current scope and what their LLVM representation is. (In other words, it is a symbol table for the code).
+std::map<std::string, llvm::Value *> NamedValues;
+
 llvm::Type* get_llvm_type(const TypeIdentifier type_ident)
 {
     switch (type_ident)
