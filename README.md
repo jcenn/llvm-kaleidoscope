@@ -1,4 +1,3 @@
-(work in progress)
 ## Kaleidoscope
 Compiled toy programming language based on the [Kaleidoscope](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html) guide series from LLVM.
 
