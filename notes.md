@@ -47,3 +47,4 @@ Similar to official kaleidoscope specs
 ## Other ideas
 - functions from stdlib are automatically imported but have to be accessed with the std:: prefix if threre's a local function that shadows them 
 ex. std::readline is available as `readline` unless user defines their own `readline` then the original has to be accessed via `std::readline`
+- variable argument count printf(pattern, ...)

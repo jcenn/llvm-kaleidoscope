@@ -1,0 +1,25 @@
+// EXPECTS 3
+fn early_return(x: i32) -> i32{
+    if x == 0 {
+        return 0;
+    }
+
+    if x == 1 {
+        return 1;
+    }else {
+        return 3;
+    }
+    
+    // Currently we need to add a return statement to the function 
+    // even though all return paths are covered by the if/else statement
+    // because of the specifics of llvm (and my skill issues lol)
+    return 0;
+}
+
+fn main(){
+    let res = 123;
+    if 1 == 1 {
+        res = early_return(5);
+    }
+    return res;
+}

@@ -108,8 +108,14 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             case '*':
                 tokens.emplace_back(TokenType::ASTERISK);
                 continue;
+            case '%':
+                tokens.emplace_back(TokenType::PERCENT);
+                continue;
             case '=':
                 tokens.emplace_back(TokenType::ASSIGNMENT);
+                continue;
+            case '<':
+                tokens.emplace_back(TokenType::LessThan);
                 continue;
             case '(':
                 tokens.emplace_back(TokenType::BRACKET_L);

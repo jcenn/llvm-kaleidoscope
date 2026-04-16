@@ -26,6 +26,8 @@ enum class TokenType {
     EQUALS,
     PLUS, MINUS,
     ASTERISK, SLASH,
+    PERCENT, // modulus
+    LessThan, // <
 
     EXCLAMATION,
 
@@ -44,6 +46,8 @@ inline std::map<TokenType, BinaryOperator> binary_operators = {
     {TokenType::MINUS, BinaryOperator::Subtract},
     {TokenType::ASTERISK, BinaryOperator::Multiply},
     {TokenType::EQUALS, BinaryOperator::CompareEQ},
+    {TokenType::PERCENT, BinaryOperator::Modulus},
+    {TokenType::LessThan, BinaryOperator::LessThan},
 };
 
 struct Token {

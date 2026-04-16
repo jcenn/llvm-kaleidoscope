@@ -252,20 +252,17 @@ llvm::Value* IfStatementAST::codegen()
     // If there is no else statement, the 'false' condition branches straight to merge
     bool false_needs_merge = this->else_statements.empty(); 
 
-    if (then_needs_merge || else_needs_merge || false_needs_merge) {
         // Someone branches here, so we must add it and set the insert point
-        fn->insert(fn->end(), merge_block);
-        Builder->SetInsertPoint(merge_block);
-    } else {
+    fn->insert(fn->end(), merge_block);
+    Builder->SetInsertPoint(merge_block);
         // No one branches here! Both paths returned early.
         // We delete the block to prevent the "missing terminator" error.
-        delete merge_block; 
+        //delete merge_block;
         
         // Note: Do NOT set the insert point to a deleted block. 
         // Any statements parsed after this IF statement in the same scope 
         // will be unreachable (dead code), but you might want to handle that 
         // cleanly in your AST loop.
-    }
     return nullptr;
 }
 
@@ -343,6 +340,26 @@ llvm::Value* get_op(TypeIdentifier type_ident, BinaryOperator op, llvm::Value* l
         if (type_ident == TypeIdentifier::Double)
         {
             return Builder->CreateFCmpOEQ(lhs_val, rhs_val);
+        }
+        break;
+    case BinaryOperator::Modulus:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateSRem(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            throw std::logic_error("Tried to use modulus on double type value (not allowed)");
+        }
+        break;
+    case BinaryOperator::LessThan:
+        if (type_ident == TypeIdentifier::I32)
+        {
+            return Builder->CreateICmpSLT(lhs_val, rhs_val);
+        }
+        if (type_ident == TypeIdentifier::Double)
+        {
+            return Builder->CreateFCmpOLT(lhs_val, rhs_val);
         }
         break;
     }

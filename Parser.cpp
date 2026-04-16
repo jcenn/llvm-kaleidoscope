@@ -23,12 +23,16 @@ std::map<std::string, TypeIdentifier> function_type_identifiers{};
 
 
 std::map<BinaryOperator, int> bin_op_precedence{
-        {BinaryOperator::Add, 1},
-        {BinaryOperator::Subtract, 1},
-        {BinaryOperator::Multiply, 10},
+    // these operators turn the whole expression into a booleanExp
+    // so they have to be parsed after both of their arguments (lower precedence)
+    {BinaryOperator::LessThan, 0},
+    {BinaryOperator::CompareEQ, 0},
+    {BinaryOperator::Modulus, 10},
 
-        // these operators turn the whole expression into a booleanExp
-        {BinaryOperator::CompareEQ, 100}
+    {BinaryOperator::Add, 20},
+    {BinaryOperator::Subtract, 20},
+    {BinaryOperator::Multiply, 50},
+
 };
 
 TypeIdentifier get_literal_type(const std::string& literal)
