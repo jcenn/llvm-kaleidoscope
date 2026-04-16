@@ -1,3 +1,5 @@
+// EXPECTS 0
+
 fn main(){
     let a = 1.0 + 2.0;
     a = a + 1.0;

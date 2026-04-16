@@ -74,6 +74,19 @@ std::vector<Token> Lexer::parse(const std::string& input) {
             continue;
         }
 
+        // If we found a < " > then we parse all text untile the closing quotation mark as a string literal
+        if (input.at(this->index) == '"')
+        {
+            size_t str_char_count = 0;
+            while (input.at(this->index + 1 + str_char_count) != '"') str_char_count++;
+
+            auto inner_text = input.substr(this->index + 1, str_char_count);
+            tokens.emplace_back(TokenType::QUOTE);
+            tokens.emplace_back(TokenType::LITERAL, inner_text);
+            tokens.emplace_back(TokenType::QUOTE);
+            this->index += str_char_count + 2; // increment index by the length of found text and the 2 " marks
+        }
+
         // Single character operator
         index++;
         switch (source[this->index-1]) {
@@ -137,7 +150,7 @@ std::vector<Token> Lexer::parse(const std::string& input) {
         // let x = 5 -> space
         // let x=5 -> '='
         // fn main() -> '('
-        constexpr char terminator_characters[] = {' ', ';', ':', ',', '=', '(', ')', '{', '}', '+', '-', '*', '/', '%', 0};
+        constexpr char terminator_characters[] = {' ', '"', ';', ':', ',', '=', '(', ')', '{', '}', '+', '-', '*', '/', '%', 0};
         std::string_view terminators = terminator_characters;
 
         char c = source[start_index + count];

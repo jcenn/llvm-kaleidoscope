@@ -1,6 +1,6 @@
 // EXPECTS 2
 
-fn add(x, y) -> i32 {
+fn add(x: i32, y: i32) -> i32 {
     return x + y;
 }
 

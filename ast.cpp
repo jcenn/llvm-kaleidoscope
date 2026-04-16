@@ -22,6 +22,9 @@ llvm::Type* get_llvm_type(const TypeIdentifier type_ident)
             return llvm::Type::getVoidTy(*Context);
         case TypeIdentifier::Double:
             return llvm::Type::getDoubleTy(*Context);
+        case TypeIdentifier::String:
+            // This represents `ptr` (which used to be `i8*`).
+            return llvm::PointerType::getUnqual(*Context);
         default:
             throw std::logic_error("Invalid type identifier");
     }
@@ -109,18 +112,29 @@ llvm::Value * LetStatementAST::codegen() {
 
     // might be useful if we want to implement an optimization with placing all allocas at the beginning of the function's block
     // auto fn = Builder->GetInsertBlock()->getParent();
-    llvm::AllocaInst* alloca_ptr = Builder->CreateAlloca(
-        get_llvm_type(this->type_hint),
-        nullptr, // array size, not used here
-        this->variable_identifier  // name for easier debugging
-    );
+    llvm::Value* val_ptr;
+    if (this->expression->return_type == TypeIdentifier::String)
+    {
+        // String literals create a static pointer in their codegen
+        val_ptr = this->expression->codegen();
+    }else
+    {
+        val_ptr = Builder->CreateAlloca(
+            get_llvm_type(this->type_hint),
+            nullptr, // array size, not used here
+            this->variable_identifier  // name for easier debugging
+        );
+    }
 
     // TODO: this can override previous values (shadowing) should handle that
     // maybe implement function scoped symbol tables
-    NamedValues[this->variable_identifier] = alloca_ptr;
+    NamedValues[this->variable_identifier] = val_ptr;
 
-    auto expr_value = this->expression->codegen();
-    Builder->CreateStore(expr_value, alloca_ptr);
+    if (this->expression->return_type != TypeIdentifier::String)
+    {
+        auto expr_value = this->expression->codegen();
+        Builder->CreateStore(expr_value, val_ptr);
+    }
 
     return nullptr;
 }
@@ -358,21 +372,24 @@ llvm::Value * VariableExpressionAST::codegen() {
 
     if (!v) throw std::runtime_error("Variable expression with unknown identifier: " + identifier);
 
+    // String is already a pointer so we don't have to load a value
+    if (this->return_type == TypeIdentifier::String)
+    {
+        return v;
+    }
     // ptr value from alloca, we want to create an instruction to load it
     if (v->getType()->isPointerTy())
     {
         switch (this->return_type)
         {
             case TypeIdentifier::I32:
-                {
-                    return Builder->CreateLoad( llvm::Type::getInt32Ty(*Context), v, this->identifier);
-                }
-            break;
             case TypeIdentifier::Double:
-                {
-                    return Builder->CreateLoad( llvm::Type::getDoubleTy(*Context), v, this->identifier);
-                }
+            {
+                return Builder->CreateLoad( get_llvm_type(this->return_type), v, this->identifier);
+            }
             break;
+        default: ;
+            throw std::runtime_error("Unrecognized type");
         }
     }else
     {
@@ -414,6 +431,8 @@ llvm::Value * LiteralExpressionAST::codegen() {
         case TypeIdentifier::VOID:
         break;
         case TypeIdentifier::String:
+            // TODO: remove newline if we ever add escape character support
+            return Builder->CreateGlobalStringPtr(this->value_str + '\n', "str_literal");
         break;
     }
     throw std::logic_error("Codegen error couldn't parse literal expression");

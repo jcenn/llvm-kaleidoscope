@@ -1,0 +1,7 @@
+extern printf(text:string) -> i32;
+
+fn main(){
+    let text = "hello world";
+    printf(text);
+    return 0;
+}

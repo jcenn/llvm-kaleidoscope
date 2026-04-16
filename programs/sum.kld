@@ -1,7 +1,7 @@
 // EXPECTS 15
 
 // sums all values from 0 to x
-fn sum(x) -> i32 {
+fn sum(x: i32) -> i32 {
     if x == 1 {
         return x;
     }

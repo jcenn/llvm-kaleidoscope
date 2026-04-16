@@ -1,4 +1,4 @@
-extern putchar(c) -> i32;
+extern putchar(c: i32) -> i32;
 
 
 

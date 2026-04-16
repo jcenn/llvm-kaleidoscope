@@ -1,7 +1,7 @@
 // EXPECTS 144
 
 // compute the n-th value of thea fibonacci sequence
-fn fib(n) -> i32 {
+fn fib(n: i32) -> i32 {
     if n == 1 {
         return 1;
     }

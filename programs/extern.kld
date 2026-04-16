@@ -1,6 +1,6 @@
-extern time(x) -> i32;
+extern time(x: i32) -> i32;
 extern rand() -> i32;
-extern srand(seed) -> void;
+extern srand(seed: i32) -> void;
 
 fn init_rand() -> void {
     srand(time(0));

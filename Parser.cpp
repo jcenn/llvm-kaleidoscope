@@ -533,6 +533,13 @@ std::unique_ptr<ExpressionAST> Parser::parse_expression(std::span<const Token> t
         }
     }
 
+    // Handle string literals -> "hello"
+    if (tokens.front().type == TokenType::QUOTE && tokens.back().type == TokenType::QUOTE)
+    {
+        // tokens[1] contains a literal with the text inside our string
+        auto expr = std::make_unique<LiteralExpressionAST>(tokens.at(1), TypeIdentifier::String);
+        return std::move(expr);
+    }
     // if tokens.length() == 1 -> identifier or literal
     if (tokens.empty()) throw std::runtime_error("Tried to parse an empty expression");
 
