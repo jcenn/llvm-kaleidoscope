@@ -4,7 +4,7 @@ Compiled toy programming language based on the [Kaleidoscope](https://llvm.org/d
 
 ### Features:
 - function declarations
-- externs for importing C functions
+- `extern` statements for importing C functions
 - simple mathematical expressions (ex. 5 + 2 - 3)
 - function calls
 - if statements
